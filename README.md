@@ -53,7 +53,7 @@ Without Supabase env vars, the app runs in local demo mode so the UI can be trie
 
 ## `// ASSUMPTION:` List
 
-- Demo mode uses the names mentioned in the prompt only when Supabase env vars are missing; the production migration does not seed players.
+- Local fallback uses the names mentioned in the prompt only when Supabase env vars are missing; the production migration does not seed players.
 - Ages are not confirmed, so kid-facing copy stays short with oversized controls for younger elementary readers.
 - Rejected sessions do not interrupt the child flow; the dashboard only says they need another try.
 - Deleting a player cascade-deletes their sessions and badge rows after a browser confirm.

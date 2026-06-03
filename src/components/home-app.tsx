@@ -48,7 +48,6 @@ import type {
   PracticeSession,
 } from "@/lib/types";
 
-type AppMode = AppDataResult["mode"];
 type Screen = "picker" | "dashboard" | "log";
 
 const PRACTICE_ICONS: Record<string, typeof Dumbbell> = {
@@ -80,21 +79,10 @@ function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" 
 }
 
 function StatusNote({
-  mode,
   queuedCount,
 }: {
-  mode: AppMode;
   queuedCount: number;
 }) {
-  if (mode === "local") {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
-        <WifiOff className="h-4 w-4" />
-        Demo mode
-      </div>
-    );
-  }
-
   if (queuedCount > 0) {
     return (
       <div className="flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-900">
@@ -109,11 +97,9 @@ function StatusNote({
 
 function PlayerPicker({
   data,
-  mode,
   onPickPlayer,
 }: {
   data: AppData;
-  mode: AppMode;
   onPickPlayer: (playerId: string) => void;
 }) {
   const queuedCount = data.sessions.filter((session) => session.sync_state === "queued").length;
@@ -140,7 +126,7 @@ function PlayerPicker({
       </header>
 
       <div className="mb-4">
-        <StatusNote mode={mode} queuedCount={queuedCount} />
+        <StatusNote queuedCount={queuedCount} />
       </div>
 
       <section className="mb-4 rounded-lg border border-supabase-border bg-supabase-50 p-4 shadow-sm">
@@ -271,14 +257,12 @@ function BadgeStrip({ player, data }: { player: Player; data: AppData }) {
 
 function PlayerDashboard({
   data,
-  mode,
   player,
   message,
   onBack,
   onLogPractice,
 }: {
   data: AppData;
-  mode: AppMode;
   player: Player;
   message: string | null;
   onBack: () => void;
@@ -321,7 +305,7 @@ function PlayerDashboard({
       </section>
 
       <div className="mt-4">
-        <StatusNote mode={mode} queuedCount={queuedCount} />
+        <StatusNote queuedCount={queuedCount} />
       </div>
 
       <section className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -857,7 +841,6 @@ export function HomeApp() {
     return (
       <PlayerPicker
         data={result.data}
-        mode={result.mode}
         onPickPlayer={(playerId) => {
           setSelectedPlayerId(playerId);
           setMessage(null);
@@ -883,7 +866,6 @@ export function HomeApp() {
     <PlayerDashboard
       data={result.data}
       message={message}
-      mode={result.mode}
       onBack={() => {
         setScreen("picker");
         setSelectedPlayerId(null);

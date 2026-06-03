@@ -112,7 +112,7 @@ export function createSeedData(): AppData {
     created_at: timestamp,
     updated_at: timestamp,
   };
-  // ASSUMPTION: Demo mode uses the names mentioned in the prompt only when Supabase env vars are missing; the production migration does not seed players.
+  // ASSUMPTION: Local fallback uses the names mentioned in the prompt only when Supabase env vars are missing; the production migration does not seed players.
   const players: Player[] = ["Roya", "Rayna"].map((name, index) => ({
     id: `player-${name.toLowerCase()}`,
     name,

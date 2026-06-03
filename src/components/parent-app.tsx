@@ -846,7 +846,7 @@ export function ParentApp() {
               Practice dashboard
             </h1>
             <p className="mt-1 font-bold text-stone-600">
-              {mode === "local" ? "Demo mode" : "Connected to Supabase"}
+              Goals, approvals, and recent practice
             </p>
           </div>
         </div>
