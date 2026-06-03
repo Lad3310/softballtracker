@@ -4,11 +4,15 @@ Mobile-first Next.js app for quick child practice logging and parent review/goal
 
 ## 1. Supabase migration SQL
 
-The standalone migration is:
+The migration files are:
 
-`supabase/migrations/20260603142307_summer_softball_schema.sql`
+- `supabase/migrations/20260603193334_summer_softball_schema.sql`
+- `supabase/migrations/20260603193559_add_parent_auth_family_scoping.sql`
+- `supabase/migrations/20260603193711_optimize_softball_rls_indexes.sql`
 
-It creates the schema, seed drill templates, seed badges, explicit `anon` grants, and explicit permissive RLS policies. RLS is enabled on every public table. Because this family app intentionally has no individual logins, the frontend uses the Supabase publishable/anon key and the `anon` role can read/write the app tables. Adding auth later should be a policy change, not a table redesign.
+The first migration creates the base schema, seed drill templates, and seed badges. The second migration adds Supabase Auth family scoping, grants table access to `authenticated`, and creates RLS policies with parent-family membership checks. The third migration adds a small index and splits two template policies to avoid duplicate SELECT policies.
+
+The softball tracker is designed to share the existing `summerrewardsapp` Supabase project safely. Its tables are prefixed with `softball_` so they do not collide with the rewards app's existing `families`, `family_members`, `badges`, and other tables.
 
 Apply it with the Supabase CLI after linking a project:
 
@@ -18,6 +22,25 @@ npx supabase db push
 ```
 
 You can also review and run the SQL directly in the Supabase SQL editor.
+
+Supabase Auth:
+
+- Enable email magic links in Supabase Auth.
+- Add your deployed domain and local dev URL to Auth redirect URLs.
+- A signed-in parent gets a family workspace automatically.
+- Kids still do not have individual logins; they use player cards after a parent signs in on the shared device.
+
+To preserve data from before the auth migration, create your parent account, create/find its `softball_families.id`, then assign old unscoped rows:
+
+```sql
+update public.softball_players
+set family_id = '<your-family-id>'
+where family_id is null;
+
+insert into public.softball_app_settings (family_id, require_parent_approval)
+values ('<your-family-id>', true)
+on conflict (family_id) do nothing;
+```
 
 ## 2. App code
 
@@ -40,7 +63,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is also supported for older Supabase projects. Do not expose a service role key in this app.
 
-Without Supabase env vars, the app runs in local demo mode so the UI can be tried on one device.
+Without Supabase env vars, the app runs with a local fallback so the UI can be tried on one device.
 
 ## Notes
 

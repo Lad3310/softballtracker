@@ -1,5 +1,10 @@
+import { AuthGate } from "@/components/auth-gate";
 import { ParentApp } from "@/components/parent-app";
 
 export default function ParentPage() {
-  return <ParentApp />;
+  return (
+    <AuthGate showAccountBar>
+      <ParentApp />
+    </AuthGate>
+  );
 }

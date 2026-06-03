@@ -704,7 +704,7 @@ export function ParentApp() {
   };
 
   const addPlayer = () => {
-    if (!data || !newPlayerName.trim()) {
+    if (!data || !data.family || !newPlayerName.trim()) {
       return;
     }
 
@@ -712,6 +712,7 @@ export function ParentApp() {
     const year = today.slice(0, 4);
     const player: Player = {
       id: createId(),
+      family_id: data.family.id,
       name: newPlayerName.trim(),
       display_order: data.players.length + 1,
       handedness: "R",

@@ -5,6 +5,7 @@ import type {
   AppSettings,
   Badge,
   DrillTemplate,
+  Family,
   Player,
   PracticeSession,
 } from "@/lib/types";
@@ -106,8 +107,16 @@ export function createSeedData(): AppData {
   const today = getAppDateKey();
   const year = today.slice(0, 4);
   const timestamp = nowIso();
+  const family: Family = {
+    id: "family-local",
+    name: "My softball family",
+    created_by: null,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
   const settings: AppSettings = {
-    id: true,
+    id: "settings-local",
+    family_id: family.id,
     require_parent_approval: true,
     created_at: timestamp,
     updated_at: timestamp,
@@ -115,6 +124,7 @@ export function createSeedData(): AppData {
   // ASSUMPTION: Local fallback uses the names mentioned in the prompt only when Supabase env vars are missing; the production migration does not seed players.
   const players: Player[] = ["Roya", "Rayna"].map((name, index) => ({
     id: `player-${name.toLowerCase()}`,
+    family_id: family.id,
     name,
     display_order: index + 1,
     handedness: index === 0 ? "R" : "switch",
@@ -126,6 +136,7 @@ export function createSeedData(): AppData {
   }));
   const templates: DrillTemplate[] = TEMPLATE_SEEDS.map((template) => ({
     id: template.id,
+    family_id: family.id,
     name: template.name,
     practice_type: template.practice_type,
     editable: false,
@@ -148,6 +159,7 @@ export function createSeedData(): AppData {
   }));
 
   return {
+    family,
     players,
     sessions: [],
     templates,
