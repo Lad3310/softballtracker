@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafaf7;
+  --foreground: #1c1917;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-supabase: #3ecf8e;
+  --color-supabase-hover: #65d9a5;
+  --color-supabase-border: #2eb67d;
+  --color-supabase-50: #effcf6;
+  --color-supabase-100: #d8f8e7;
+  --color-supabase-200: #a8efcd;
+  --color-supabase-700: #0f8f63;
+  --color-supabase-800: #0b6f4d;
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.bg-supabase {
+  background-color: #3ecf8e;
+}
+
+.bg-supabase-50 {
+  background-color: #effcf6;
+}
+
+.hover\:bg-supabase-100:hover {
+  background-color: #d8f8e7;
+}
+
+.hover\:bg-supabase-hover:hover {
+  background-color: #65d9a5;
+}
+
+.border-supabase-border {
+  border-color: #2eb67d;
+}
+
+.hover\:border-supabase-border:hover {
+  border-color: #2eb67d;
+}
+
+.text-supabase-700 {
+  color: #0f8f63;
+}
+
+.text-supabase-800 {
+  color: #0b6f4d;
+}
+
+.focus\:ring-supabase-100:focus {
+  --tw-ring-color: #d8f8e7;
 }
