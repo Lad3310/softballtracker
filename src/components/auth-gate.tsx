@@ -16,6 +16,8 @@ import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/lib/supabase";
 type AuthMethod = "email-link" | "password";
 type PasswordAction = "sign-in" | "sign-up";
 
+const NEW_ACCOUNT_PASSWORD_MIN_LENGTH = 6;
+
 function getAuthRedirectUrl() {
   return new URL("/", window.location.origin).toString();
 }
@@ -306,7 +308,11 @@ export function AuthGate({
                       : "current-password"
                   }
                   className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
-                  minLength={8}
+                  minLength={
+                    passwordAction === "sign-up"
+                      ? NEW_ACCOUNT_PASSWORD_MIN_LENGTH
+                      : undefined
+                  }
                   onChange={(event) => setPassword(event.target.value)}
                   required
                   type="password"
@@ -320,7 +326,7 @@ export function AuthGate({
                 <input
                   autoComplete="new-password"
                   className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
-                  minLength={8}
+                  minLength={NEW_ACCOUNT_PASSWORD_MIN_LENGTH}
                   onChange={(event) =>
                     setPasswordConfirmation(event.target.value)
                   }
