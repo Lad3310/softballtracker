@@ -4,16 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  BatteryCharging,
   CalendarDays,
   Check,
   ChevronRight,
-  CircleDot,
-  ClipboardCheck,
   Clock,
   Dumbbell,
   Frown,
-  Gauge,
   Heart,
   LayoutDashboard,
   Medal,
@@ -21,7 +17,7 @@ import {
   Trophy,
   WifiOff,
 } from "lucide-react";
-import { FEELINGS, MINUTE_PRESETS, PRACTICE_TYPES } from "@/lib/config";
+import { FEELINGS, MINUTE_PRESETS } from "@/lib/config";
 import {
   createPracticeSessionFromInput,
   loadAppData,
@@ -45,20 +41,12 @@ import type {
   HittingSide,
   LogSessionInput,
   Player,
+  PlayerSport,
   PracticeSession,
+  Sport,
 } from "@/lib/types";
 
 type Screen = "picker" | "dashboard" | "log";
-
-const PRACTICE_ICONS: Record<string, typeof Dumbbell> = {
-  "Tee Work": CircleDot,
-  "Side Soft Toss": Gauge,
-  Fielding: ClipboardCheck,
-  Throwing: BatteryCharging,
-  Conditioning: Dumbbell,
-  Game: Trophy,
-  Other: Sparkles,
-};
 
 function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -119,10 +107,10 @@ function PlayerPicker({
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-supabase-800">
-            Summer Softball
+            Family Practice
           </p>
           <h1 className="mt-1 text-3xl font-black text-stone-950 sm:text-5xl">
-            Pick your player
+            Pick your athlete
           </h1>
         </div>
         <Link
@@ -154,7 +142,7 @@ function PlayerPicker({
               </div>
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-stone-500">
-                  Players
+                  Athletes
                 </p>
                 <p className="text-2xl font-black text-stone-950">{data.players.length}</p>
               </div>
@@ -179,9 +167,9 @@ function PlayerPicker({
       {data.players.length === 0 ? (
         <section className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-white p-8 text-center">
           <Trophy className="mb-4 h-12 w-12 text-supabase-700" />
-          <h2 className="text-2xl font-black text-stone-950">Ready for players</h2>
+          <h2 className="text-2xl font-black text-stone-950">Ready for athletes</h2>
           <p className="mt-2 max-w-md text-lg font-medium text-stone-600">
-            Ask a grown-up to add player cards.
+            Ask a grown-up to add athlete cards.
           </p>
         </section>
       ) : (
@@ -190,6 +178,10 @@ function PlayerPicker({
             const today = getAppDateKey();
             const weekly = getWeeklyProgress(player, data.sessions, today);
             const pendingMinutes = getPendingMinutes(data.sessions, player.id);
+            const sportNames = data.playerSports
+              .filter((assignment) => assignment.player_id === player.id)
+              .map((assignment) => data.sports.find((sport) => sport.id === assignment.sport_id)?.name)
+              .filter((name): name is string => Boolean(name));
 
             return (
               <button
@@ -202,9 +194,7 @@ function PlayerPicker({
                   <div>
                     <h2 className="text-4xl font-black text-stone-950">{player.name}</h2>
                     <p className="mt-1 text-base font-bold text-stone-500">
-                      {player.handedness === "switch"
-                        ? "Switch hitter"
-                        : `${player.handedness} handed`}
+                      {sportNames.length > 0 ? sportNames.join(", ") : "No sports assigned yet"}
                     </p>
                   </div>
                   <ChevronRight className="mt-2 h-7 w-7 text-supabase-700" />
@@ -329,7 +319,7 @@ function PlayerDashboard({
           </p>
           <p className="mt-2 text-lg font-bold text-stone-600">
             {weekly.met
-              ? "Goal met. Big swing energy."
+              ? "Goal met. Nice work."
               : `You need ${weekly.remaining} more minutes this week.`}
           </p>
           <div className="mt-5">
@@ -340,15 +330,15 @@ function PlayerDashboard({
         <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <CalendarDays className="h-7 w-7 text-sky-600" />
-            <h2 className="text-xl font-black text-stone-950">Summer</h2>
+            <h2 className="text-xl font-black text-stone-950">Season</h2>
           </div>
           <p className="mt-5 text-3xl font-black text-stone-950">
-            You practiced {summer.minutes} minutes this summer.
+            You practiced {summer.minutes} minutes this season.
           </p>
           <p className="mt-2 text-lg font-bold text-stone-600">
             {summer.met
-              ? "Summer goal complete."
-              : `You need ${summer.remaining} more minutes for your summer goal.`}
+              ? "Season goal complete."
+              : `You need ${summer.remaining} more minutes for your season goal.`}
           </p>
           <p className="mt-2 text-base font-bold text-sky-700">
             {summer.met
@@ -394,18 +384,23 @@ function PlayerDashboard({
 
 function QuickLogFlow({
   player,
+  sports,
+  playerSports,
   templates,
   approvalRequired,
   onCancel,
   onSubmit,
 }: {
   player: Player;
+  sports: Sport[];
+  playerSports: PlayerSport[];
   templates: DrillTemplate[];
   approvalRequired: boolean;
   onCancel: () => void;
   onSubmit: (input: LogSessionInput) => void;
 }) {
-  const [step, setStep] = useState<"type" | "minutes" | "drills">("type");
+  const [step, setStep] = useState<"sport" | "type" | "minutes" | "drills">("sport");
+  const [sportId, setSportId] = useState<string | null>(null);
   const [practiceType, setPracticeType] = useState<string | null>(null);
   const [minutes, setMinutes] = useState<number | null>(null);
   const [drills, setDrills] = useState<Array<{ label: string; completed: boolean }>>([]);
@@ -414,10 +409,21 @@ function QuickLogFlow({
   const [hittingSide, setHittingSide] = useState<HittingSide | null>(null);
   const [sessionDate, setSessionDate] = useState(() => getAppDateKey());
 
-  const selectPracticeType = (type: string) => {
-    const template = templates.find((candidate) => candidate.practice_type === type);
+  const availableSports = sports.filter((sport) =>
+    playerSports.some(
+      (assignment) => assignment.player_id === player.id && assignment.sport_id === sport.id,
+    ),
+  );
+  const selectedSport = sports.find((sport) => sport.id === sportId) ?? null;
+  const availableTemplates = templates.filter((template) => template.sport_id === sportId);
 
-    setPracticeType(type);
+  const selectSport = (sport: Sport) => {
+    setSportId(sport.id);
+    setStep("type");
+  };
+
+  const selectTemplate = (template: DrillTemplate) => {
+    setPracticeType(template.practice_type);
     setDrills(
       (template?.items ?? []).map((item) => ({
         label: item.label,
@@ -428,12 +434,13 @@ function QuickLogFlow({
   };
 
   const submit = () => {
-    if (!practiceType || !minutes) {
+    if (!sportId || !practiceType || !minutes) {
       return;
     }
 
     onSubmit({
       player,
+      sport_id: sportId,
       practice_type: practiceType,
       minutes,
       drills,
@@ -465,25 +472,67 @@ function QuickLogFlow({
         </div>
       </header>
 
-      {step === "type" ? (
+      {step === "sport" ? (
         <section className="grid gap-3 sm:grid-cols-2">
-          {PRACTICE_TYPES.map((type) => {
-            const Icon = PRACTICE_ICONS[type] ?? Sparkles;
-
-            return (
+          {availableSports.length === 0 ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 sm:col-span-2">
+              <h2 className="text-2xl font-black text-stone-950">No sports assigned yet</h2>
+              <p className="mt-2 font-bold text-stone-600">
+                Ask a parent to choose sports for {player.name} in the dashboard.
+              </p>
+            </div>
+          ) : (
+            availableSports.map((sport) => (
               <button
                 className="flex min-h-24 items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-supabase-border focus:outline-none focus:ring-4 focus:ring-supabase-100"
-                key={type}
-                onClick={() => selectPracticeType(type)}
+                key={sport.id}
+                onClick={() => selectSport(sport)}
                 type="button"
               >
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-supabase-50 text-supabase-800">
-                  <Icon className="h-8 w-8" />
+                  <span className="text-lg font-black">{sport.icon}</span>
                 </span>
-                <span className="text-2xl font-black text-stone-950">{type}</span>
+                <span className="text-2xl font-black text-stone-950">{sport.name}</span>
               </button>
-            );
-          })}
+            ))
+          )}
+        </section>
+      ) : null}
+
+      {step === "type" ? (
+        <section>
+          <p className="mb-2 text-sm font-black uppercase tracking-wide text-supabase-800">
+            {selectedSport?.name}
+          </p>
+          <h2 className="mb-4 text-3xl font-black text-stone-950">Choose a practice plan</h2>
+          {availableTemplates.length === 0 ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+              <p className="font-bold text-stone-700">
+                A parent needs to add a practice plan for this sport first.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {availableTemplates.map((template) => (
+                <button
+                  className="flex min-h-24 items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-supabase-border focus:outline-none focus:ring-4 focus:ring-supabase-100"
+                  key={template.id}
+                  onClick={() => selectTemplate(template)}
+                  type="button"
+                >
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-supabase-50 text-supabase-800">
+                    <Dumbbell className="h-8 w-8" />
+                  </span>
+                  <span>
+                    <span className="block text-2xl font-black text-stone-950">
+                      {template.practice_type}
+                    </span>
+                    <span className="font-bold text-stone-500">{template.name}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -566,7 +615,10 @@ function QuickLogFlow({
             )}
           </div>
 
-          {player.handedness === "switch" ? (
+          {player.handedness === "switch" &&
+          ["softball", "baseball"].some((name) =>
+            selectedSport?.name.toLowerCase().includes(name),
+          ) ? (
             <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
               <h2 className="text-xl font-black text-stone-950">Which side?</h2>
               <div className="mt-3 grid grid-cols-3 gap-2">
@@ -858,6 +910,8 @@ export function HomeApp() {
         onCancel={() => setScreen("dashboard")}
         onSubmit={handleSubmit}
         player={selectedPlayer}
+        playerSports={result.data.playerSports}
+        sports={result.data.sports}
         templates={result.data.templates}
       />
     );

@@ -366,7 +366,7 @@ export function AuthGate({
           {error ? <p className="mt-4 font-bold text-rose-700">{error}</p> : null}
           <p className="mt-5 text-sm font-medium text-stone-500">
             Email links only work for existing accounts. New parents can create
-            an account with a password. Kids still use player cards after a
+            an account with a password. Kids still use athlete cards after a
             parent signs in on this device.
           </p>
         </section>

@@ -7,11 +7,21 @@ import type {
   DrillTemplate,
   Family,
   Player,
+  PlayerSport,
   PracticeSession,
+  Sport,
 } from "@/lib/types";
 
 const LOCAL_DATA_KEY = "softball-tracker:data";
 const QUEUED_SESSIONS_KEY = "softball-tracker:queued-sessions";
+const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
+
+const SPORT_SEEDS = [
+  [SOFTBALL_SPORT_ID, "Softball", "SB"],
+  ["10000000-0000-4000-8000-000000000002", "Soccer", "SC"],
+  ["10000000-0000-4000-8000-000000000003", "Basketball", "BB"],
+  ["10000000-0000-4000-8000-000000000004", "Volleyball", "VB"],
+] as const;
 
 const TEMPLATE_SEEDS = [
   {
@@ -76,27 +86,9 @@ const BADGE_SEEDS = [
     "Logged approved practice on 5 consecutive New York calendar days.",
     "5",
   ],
-  [
-    "tee_work_complete",
-    "Tee Work Complete",
-    "Logged Tee Work 3 times in one Monday-start week.",
-    "TEE",
-  ],
-  [
-    "soft_toss_complete",
-    "Soft Toss Complete",
-    "Logged Side Soft Toss 3 times in one Monday-start week.",
-    "ST",
-  ],
-  [
-    "balanced_hitter",
-    "Balanced Hitter",
-    "A switch hitter logged both left and right reps in one approved session.",
-    "LR",
-  ],
-  ["summer_grinder", "Summer Grinder", "Reached 25% of the summer goal.", "25"],
-  ["halfway_there", "Halfway There", "Reached 50% of the summer goal.", "50"],
-  ["summer_goal_complete", "Summer Goal Complete", "Reached 100% of the summer goal.", "100"],
+  ["summer_grinder", "Season Starter", "Reached 25% of the season goal.", "25"],
+  ["halfway_there", "Halfway There", "Reached 50% of the season goal.", "50"],
+  ["summer_goal_complete", "Season Goal Complete", "Reached 100% of the season goal.", "100"],
 ] as const;
 
 function canUseStorage() {
@@ -109,7 +101,7 @@ export function createSeedData(): AppData {
   const timestamp = nowIso();
   const family: Family = {
     id: "family-local",
-    name: "My softball family",
+    name: "My family",
     created_by: null,
     created_at: timestamp,
     updated_at: timestamp,
@@ -137,6 +129,7 @@ export function createSeedData(): AppData {
   const templates: DrillTemplate[] = TEMPLATE_SEEDS.map((template) => ({
     id: template.id,
     family_id: family.id,
+    sport_id: SOFTBALL_SPORT_ID,
     name: template.name,
     practice_type: template.practice_type,
     editable: false,
@@ -157,10 +150,25 @@ export function createSeedData(): AppData {
     icon,
     created_at: timestamp,
   }));
+  const sports: Sport[] = SPORT_SEEDS.map(([id, name, icon], index) => ({
+    id,
+    family_id: null,
+    name,
+    icon,
+    display_order: (index + 1) * 10,
+    created_at: timestamp,
+  }));
+  const playerSports: PlayerSport[] = players.map((player) => ({
+    player_id: player.id,
+    sport_id: SOFTBALL_SPORT_ID,
+    created_at: timestamp,
+  }));
 
   return {
     family,
     players,
+    sports,
+    playerSports,
     sessions: [],
     templates,
     badges,
@@ -199,6 +207,16 @@ export function loadStoredLocalData() {
     return {
       ...seed,
       ...parsed,
+      sports: parsed.sports ?? seed.sports,
+      playerSports: parsed.playerSports ?? seed.playerSports,
+      sessions: (parsed.sessions ?? []).map((session) => ({
+        ...session,
+        sport_id: session.sport_id ?? SOFTBALL_SPORT_ID,
+      })),
+      templates: (parsed.templates ?? seed.templates).map((template) => ({
+        ...template,
+        sport_id: template.sport_id ?? SOFTBALL_SPORT_ID,
+      })),
       settings: parsed.settings ?? seed.settings,
     };
   } catch {
@@ -224,7 +242,9 @@ export function loadQueuedSessions() {
   }
 
   try {
-    return JSON.parse(window.localStorage.getItem(QUEUED_SESSIONS_KEY) ?? "[]") as PracticeSession[];
+    return (
+      JSON.parse(window.localStorage.getItem(QUEUED_SESSIONS_KEY) ?? "[]") as PracticeSession[]
+    ).map((session) => ({ ...session, sport_id: session.sport_id ?? SOFTBALL_SPORT_ID }));
   } catch {
     return [];
   }
@@ -250,6 +270,7 @@ export function cloneData(data: AppData): AppData {
 
 export function makeLocalPracticeSession(input: {
   player_id: string;
+  sport_id: string;
   practice_type: string;
   minutes: number;
   feeling?: string | null;
@@ -266,6 +287,7 @@ export function makeLocalPracticeSession(input: {
   return {
     id,
     player_id: input.player_id,
+    sport_id: input.sport_id,
     practice_type: input.practice_type,
     minutes: input.minutes,
     feeling: input.feeling ?? null,

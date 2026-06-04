@@ -15,7 +15,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { FEELINGS, FOCUS_TAGS, PRACTICE_TYPES } from "@/lib/config";
+import { FEELINGS, FOCUS_TAGS } from "@/lib/config";
 import { recomputePlayerBadges } from "@/lib/badges";
 import {
   deletePlayerRemote,
@@ -23,10 +23,12 @@ import {
   loadAppData,
   persistLocalState,
   recomputeBadgesForPlayer,
+  replacePlayerSportsRemote,
   replaceBadgesRemote,
   savePlayerRemote,
   saveSessionRemote,
   saveSettingsRemote,
+  saveSportRemote,
   saveTemplateRemote,
 } from "@/lib/data-client";
 import { createId, formatShortDate, getAppDateKey, nowIso } from "@/lib/time";
@@ -38,8 +40,10 @@ import type {
   Handedness,
   HittingSide,
   Player,
+  PlayerSport,
   PracticeSession,
   SessionStatus,
+  Sport,
 } from "@/lib/types";
 
 function classNames(...classes: Array<string | false | null | undefined>) {
@@ -111,18 +115,12 @@ function SessionEditor({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2 text-sm font-black text-stone-600">
-            Type
-            <select
+            Practice plan
+            <input
               className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
               onChange={(event) => setDraft({ ...draft, practice_type: event.target.value })}
               value={draft.practice_type}
-            >
-              {PRACTICE_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+            />
           </label>
 
           <label className="grid gap-2 text-sm font-black text-stone-600">
@@ -310,6 +308,7 @@ function PendingCard({
 }) {
   const [reason, setReason] = useState("");
   const player = data.players.find((candidate) => candidate.id === session.player_id);
+  const sport = data.sports.find((candidate) => candidate.id === session.sport_id);
 
   return (
     <article className="rounded-lg border border-amber-200 bg-white p-4 shadow-sm">
@@ -317,7 +316,7 @@ function PendingCard({
         <div>
           <p className="text-sm font-black uppercase tracking-wide text-amber-700">Pending</p>
           <h3 className="mt-1 text-xl font-black text-stone-950">
-            {player?.name ?? "Player"} - {session.practice_type}
+            {player?.name ?? "Athlete"} - {sport?.name ?? "Sport"} - {session.practice_type}
           </h3>
           <p className="mt-1 font-bold text-stone-600">
             {session.minutes} min on {formatShortDate(session.session_date)}
@@ -366,11 +365,17 @@ function PendingCard({
 
 function PlayerSettingsCard({
   player,
+  sports,
+  assignments,
   onDelete,
+  onToggleSport,
   onUpdate,
 }: {
   player: Player;
+  sports: Sport[];
+  assignments: PlayerSport[];
   onDelete: (player: Player) => void;
+  onToggleSport: (player: Player, sportId: string) => void;
   onUpdate: (player: Player) => void;
 }) {
   return (
@@ -395,7 +400,7 @@ function PlayerSettingsCard({
           />
         </label>
         <label className="grid gap-1 text-sm font-black text-stone-600">
-          Handedness
+          Batting hand (softball)
           <select
             className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
             onChange={(event) =>
@@ -421,7 +426,7 @@ function PlayerSettingsCard({
           />
         </label>
         <label className="grid gap-1 text-sm font-black text-stone-600">
-          Summer goal
+          Season goal
           <input
             className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
             min={1}
@@ -433,7 +438,7 @@ function PlayerSettingsCard({
           />
         </label>
         <label className="grid gap-1 text-sm font-black text-stone-600">
-          Summer start
+          Season start
           <input
             className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
             onChange={(event) => onUpdate({ ...player, summer_start_date: event.target.value })}
@@ -442,7 +447,7 @@ function PlayerSettingsCard({
           />
         </label>
         <label className="grid gap-1 text-sm font-black text-stone-600">
-          Summer end
+          Season end
           <input
             className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
             onChange={(event) => onUpdate({ ...player, summer_end_date: event.target.value })}
@@ -451,21 +456,52 @@ function PlayerSettingsCard({
           />
         </label>
       </div>
+      <div className="mt-4">
+        <p className="text-sm font-black text-stone-600">Sports</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {sports.map((sport) => {
+            const selected = assignments.some((assignment) => assignment.sport_id === sport.id);
+
+            return (
+              <button
+                aria-pressed={selected}
+                className={classNames(
+                  "min-h-10 rounded-md border px-3 text-sm font-black",
+                  selected
+                    ? "border-supabase-border bg-supabase-50 text-supabase-800"
+                    : "border-stone-200 bg-white text-stone-500",
+                )}
+                key={sport.id}
+                onClick={() => onToggleSport(player, sport.id)}
+                type="button"
+              >
+                {selected ? "Selected: " : ""}
+                {sport.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </article>
   );
 }
 
 function TemplateCard({
   template,
+  sport,
   onSave,
 }: {
   template: DrillTemplate;
+  sport: Sport | undefined;
   onSave: (template: DrillTemplate) => void;
 }) {
   const [draft, setDraft] = useState(template);
 
   return (
     <article className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+      <p className="mb-3 text-sm font-black uppercase tracking-wide text-supabase-800">
+        {sport?.name ?? "Sport"}
+      </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-black text-stone-600">
           Name
@@ -476,18 +512,12 @@ function TemplateCard({
           />
         </label>
         <label className="grid gap-1 text-sm font-black text-stone-600">
-          Type
-          <select
+          Plan name
+          <input
             className="min-h-11 rounded-md border border-stone-200 px-3 font-bold text-stone-950"
             onChange={(event) => setDraft({ ...draft, practice_type: event.target.value })}
             value={draft.practice_type}
-          >
-            {PRACTICE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       </div>
       <div className="mt-3 grid gap-2">
@@ -557,6 +587,9 @@ export function ParentApp() {
   const [result, setResult] = useState<AppDataResult | null>(null);
   const [editingSession, setEditingSession] = useState<PracticeSession | null>(null);
   const [newPlayerName, setNewPlayerName] = useState("");
+  const [newSportName, setNewSportName] = useState("");
+  const [newPlanName, setNewPlanName] = useState("");
+  const [newPlanSportId, setNewPlanSportId] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -709,9 +742,9 @@ export function ParentApp() {
           nextData.playerBadges.filter((badge) => badge.player_id === player.id),
         );
       }
-      setNotice("Player saved.");
+      setNotice("Athlete saved.");
     } catch (caught) {
-      setNotice(caught instanceof Error ? caught.message : "Player saved on this device.");
+      setNotice(caught instanceof Error ? caught.message : "Athlete saved on this device.");
     }
   };
 
@@ -734,10 +767,133 @@ export function ParentApp() {
       summer_end_date: `${year}-08-31`,
       created_at: timestamp,
     };
+    const defaultSport = data.sports[0];
+    const assignment: PlayerSport | null = defaultSport
+      ? {
+          player_id: player.id,
+          sport_id: defaultSport.id,
+          created_at: timestamp,
+        }
+      : null;
+    const nextData = {
+      ...data,
+      players: [...data.players, player],
+      playerSports: assignment ? [...data.playerSports, assignment] : data.playerSports,
+    };
 
     setNewPlayerName("");
-    void savePlayer(player);
-    updateData({ ...data, players: [...data.players, player] });
+    updateData(nextData);
+    void (async () => {
+      try {
+        if (mode === "supabase") {
+          await savePlayerRemote(player);
+          await replacePlayerSportsRemote(player.id, assignment ? [assignment] : []);
+        }
+        setNotice("Athlete added.");
+      } catch (caught) {
+        setNotice(caught instanceof Error ? caught.message : "Athlete saved on this device.");
+      }
+    })();
+  };
+
+  const togglePlayerSport = async (player: Player, sportId: string) => {
+    if (!data) {
+      return;
+    }
+
+    const current = data.playerSports.filter((assignment) => assignment.player_id === player.id);
+    const selected = current.some((assignment) => assignment.sport_id === sportId);
+    const nextAssignments = selected
+      ? current.filter((assignment) => assignment.sport_id !== sportId)
+      : [...current, { player_id: player.id, sport_id: sportId, created_at: nowIso() }];
+    const nextData = {
+      ...data,
+      playerSports: [
+        ...data.playerSports.filter((assignment) => assignment.player_id !== player.id),
+        ...nextAssignments,
+      ],
+    };
+    updateData(nextData);
+
+    try {
+      if (mode === "supabase") {
+        await replacePlayerSportsRemote(player.id, nextAssignments);
+      }
+      setNotice("Athlete sports saved.");
+    } catch (caught) {
+      setNotice(caught instanceof Error ? caught.message : "Sports saved on this device.");
+    }
+  };
+
+  const addSport = async () => {
+    if (!data || !data.family || !newSportName.trim()) {
+      return;
+    }
+
+    const name = newSportName.trim();
+
+    if (data.sports.some((sport) => sport.name.toLowerCase() === name.toLowerCase())) {
+      setNotice("That sport is already available.");
+      return;
+    }
+
+    const sport: Sport = {
+      id: createId(),
+      family_id: data.family.id,
+      name,
+      icon: name.slice(0, 2).toUpperCase(),
+      display_order: data.sports.length * 10 + 10,
+      created_at: nowIso(),
+    };
+    const nextData = { ...data, sports: [...data.sports, sport] };
+    setNewSportName("");
+    updateData(nextData);
+
+    try {
+      if (mode === "supabase") {
+        await saveSportRemote(sport);
+      }
+      setNotice("Custom sport added.");
+    } catch (caught) {
+      setNotice(caught instanceof Error ? caught.message : "Sport saved on this device.");
+    }
+  };
+
+  const addTemplate = async () => {
+    if (!data || !data.family || !newPlanName.trim()) {
+      return;
+    }
+
+    const sportId = newPlanSportId || data.sports[0]?.id;
+
+    if (!sportId) {
+      setNotice("Add a sport before creating a practice plan.");
+      return;
+    }
+
+    const timestamp = nowIso();
+    const template: DrillTemplate = {
+      id: createId(),
+      family_id: data.family.id,
+      sport_id: sportId,
+      name: newPlanName.trim(),
+      practice_type: newPlanName.trim(),
+      editable: true,
+      created_at: timestamp,
+      items: [],
+    };
+    const nextData = { ...data, templates: [...data.templates, template] };
+    setNewPlanName("");
+    updateData(nextData);
+
+    try {
+      if (mode === "supabase") {
+        await saveTemplateRemote(template);
+      }
+      setNotice("Practice plan added. Add drills to it below.");
+    } catch (caught) {
+      setNotice(caught instanceof Error ? caught.message : "Plan saved on this device.");
+    }
   };
 
   const removePlayer = async (player: Player) => {
@@ -749,6 +905,7 @@ export function ParentApp() {
     const nextData: AppData = {
       ...data,
       players: data.players.filter((candidate) => candidate.id !== player.id),
+      playerSports: data.playerSports.filter((assignment) => assignment.player_id !== player.id),
       sessions: data.sessions.filter((session) => session.player_id !== player.id),
       playerBadges: data.playerBadges.filter((badge) => badge.player_id !== player.id),
     };
@@ -758,7 +915,7 @@ export function ParentApp() {
       if (mode === "supabase") {
         await deletePlayerRemote(player.id);
       }
-      setNotice("Player deleted.");
+      setNotice("Athlete deleted.");
     } catch (caught) {
       setNotice(caught instanceof Error ? caught.message : "Could not delete from Supabase.");
     }
@@ -804,9 +961,9 @@ export function ParentApp() {
       if (mode === "supabase") {
         await saveTemplateRemote(template);
       }
-      setNotice("Template saved.");
+      setNotice("Practice plan saved.");
     } catch (caught) {
-      setNotice(caught instanceof Error ? caught.message : "Template saved on this device.");
+      setNotice(caught instanceof Error ? caught.message : "Practice plan saved on this device.");
     }
   };
 
@@ -895,7 +1052,7 @@ export function ParentApp() {
           <p className="mt-2 text-4xl font-black text-stone-950">{pendingSessions.length}</p>
         </div>
         <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-wide text-stone-500">Players</p>
+          <p className="text-sm font-black uppercase tracking-wide text-stone-500">Athletes</p>
           <p className="mt-2 text-4xl font-black text-stone-950">{data.players.length}</p>
         </div>
         <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
@@ -905,7 +1062,7 @@ export function ParentApp() {
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-3 text-2xl font-black text-stone-950">Player progress</h2>
+        <h2 className="mb-3 text-2xl font-black text-stone-950">Athlete progress</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {data.players.map((player) => {
             const weekly = getWeeklyProgress(player, data.sessions, today);
@@ -937,7 +1094,7 @@ export function ParentApp() {
                   </div>
                   <div>
                     <div className="mb-1 flex justify-between text-sm font-black text-stone-600">
-                      <span>Summer</span>
+                      <span>Season</span>
                       <span>
                         {summer.minutes}/{player.summer_goal_minutes}
                       </span>
@@ -979,6 +1136,7 @@ export function ParentApp() {
         <div className="grid gap-2">
           {recentSessions.map((session) => {
             const player = data.players.find((candidate) => candidate.id === session.player_id);
+            const sport = data.sports.find((candidate) => candidate.id === session.sport_id);
 
             return (
               <article
@@ -988,7 +1146,7 @@ export function ParentApp() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-black text-stone-950">
-                      {player?.name ?? "Player"} - {session.practice_type}
+                      {player?.name ?? "Athlete"} - {sport?.name ?? "Sport"} - {session.practice_type}
                     </h3>
                     <span
                       className={classNames(
@@ -1032,14 +1190,59 @@ export function ParentApp() {
 
       <section className="mb-6">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="text-2xl font-black text-stone-950">Players and goals</h2>
+          <div>
+            <h2 className="text-2xl font-black text-stone-950">Sports</h2>
+            <p className="mt-1 font-bold text-stone-600">
+              Starter sports are ready to use. Add a private custom sport here.
+            </p>
+          </div>
           <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <input
-              className="min-h-11 rounded-md border border-stone-200 px-3 font-bold text-stone-950"
-              onChange={(event) => setNewPlayerName(event.target.value)}
-              placeholder="Player name"
-              value={newPlayerName}
-            />
+            <label>
+              <span className="sr-only">Custom sport name</span>
+              <input
+                aria-label="Custom sport name"
+                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
+                onChange={(event) => setNewSportName(event.target.value)}
+                placeholder="Custom sport"
+                value={newSportName}
+              />
+            </label>
+            <button
+              className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-3 font-black text-white"
+              onClick={() => void addSport()}
+              type="button"
+            >
+              <Plus className="h-4 w-4" />
+              Add sport
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {data.sports.map((sport) => (
+            <span
+              className="rounded-full border border-supabase-border bg-supabase-50 px-3 py-2 font-black text-supabase-800"
+              key={sport.id}
+            >
+              {sport.icon} {sport.name}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <h2 className="text-2xl font-black text-stone-950">Athletes and goals</h2>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <label>
+              <span className="sr-only">Athlete name</span>
+              <input
+                aria-label="Athlete name"
+                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
+                onChange={(event) => setNewPlayerName(event.target.value)}
+                placeholder="Athlete name"
+                value={newPlayerName}
+              />
+            </label>
             <button
               className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-3 font-black text-white"
               onClick={addPlayer}
@@ -1054,22 +1257,74 @@ export function ParentApp() {
           {data.players.map((player) => (
             <PlayerSettingsCard
               key={player.id}
+              assignments={data.playerSports.filter(
+                (assignment) => assignment.player_id === player.id,
+              )}
               onDelete={(candidate) => void removePlayer(candidate)}
+              onToggleSport={(candidate, sportId) => void togglePlayerSport(candidate, sportId)}
               onUpdate={(candidate) => void savePlayer(candidate)}
               player={player}
+              sports={data.sports}
             />
           ))}
         </div>
       </section>
 
       <section className="pb-10">
-        <h2 className="mb-3 flex items-center gap-2 text-2xl font-black text-stone-950">
-          <ClipboardList className="h-6 w-6" />
-          Drill templates
-        </h2>
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-black text-stone-950">
+              <ClipboardList className="h-6 w-6" />
+              Practice plans
+            </h2>
+            <p className="mt-1 font-bold text-stone-600">
+              Choose a sport, name the plan, then add drills below.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[auto_1fr_auto]">
+            <label>
+              <span className="sr-only">Plan sport</span>
+              <select
+                aria-label="Plan sport"
+                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
+                onChange={(event) => setNewPlanSportId(event.target.value)}
+                value={newPlanSportId || data.sports[0]?.id || ""}
+              >
+                {data.sports.map((sport) => (
+                  <option key={sport.id} value={sport.id}>
+                    {sport.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">New plan name</span>
+              <input
+                aria-label="New plan name"
+                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
+                onChange={(event) => setNewPlanName(event.target.value)}
+                placeholder="Plan name"
+                value={newPlanName}
+              />
+            </label>
+            <button
+              className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-3 font-black text-white"
+              onClick={() => void addTemplate()}
+              type="button"
+            >
+              <Plus className="h-4 w-4" />
+              Add plan
+            </button>
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {data.templates.map((template) => (
-            <TemplateCard key={template.id} onSave={(draft) => void saveTemplate(draft)} template={template} />
+            <TemplateCard
+              key={template.id}
+              onSave={(draft) => void saveTemplate(draft)}
+              sport={data.sports.find((sport) => sport.id === template.sport_id)}
+              template={template}
+            />
           ))}
         </div>
       </section>

@@ -24,11 +24,14 @@ import type {
   LogSessionInput,
   Player,
   PlayerBadge,
+  PlayerSport,
   PracticeSession,
   PracticeSessionDrill,
+  Sport,
 } from "@/lib/types";
 
 type Supabase = NonNullable<ReturnType<typeof getSupabaseBrowserClient>>;
+const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
 
 const TABLES = {
   appSettings: "softball_app_settings",
@@ -38,9 +41,11 @@ const TABLES = {
   families: "softball_families",
   familyMembers: "softball_family_members",
   playerBadges: "softball_player_badges",
+  playerSports: "softball_player_sports",
   players: "softball_players",
   practiceSessionDrills: "softball_practice_session_drills",
   practiceSessions: "softball_practice_sessions",
+  sports: "softball_sports",
 } as const;
 
 function mergeQueuedSessions(data: AppData) {
@@ -50,7 +55,9 @@ function mergeQueuedSessions(data: AppData) {
   return {
     ...data,
     sessions: [
-      ...queued.filter((session) => !existingIds.has(session.id)),
+      ...queued
+        .filter((session) => !existingIds.has(session.id))
+        .map((session) => ({ ...session, sport_id: session.sport_id ?? SOFTBALL_SPORT_ID })),
       ...data.sessions,
     ].sort((a, b) => b.created_at.localeCompare(a.created_at)),
   };
@@ -60,6 +67,7 @@ function sessionRow(session: PracticeSession) {
   return {
     id: session.id,
     player_id: session.player_id,
+    sport_id: session.sport_id,
     practice_type: session.practice_type,
     minutes: session.minutes,
     feeling: session.feeling,
@@ -152,6 +160,7 @@ async function importStoredLocalData(supabase: Supabase, familyId: string) {
       ...localSession,
       id: sessionId,
       player_id: playerId,
+      sport_id: localSession.sport_id ?? SOFTBALL_SPORT_ID,
       drills: localSession.drills.map((drill) => ({
         ...drill,
         id: isUuid(drill.id) ? drill.id : createId(),
@@ -175,6 +184,17 @@ async function importStoredLocalData(supabase: Supabase, familyId: string) {
     if (drillInsert.error) {
       throw drillInsert.error;
     }
+  }
+
+  const playerSports = Array.from(playerIdMap.values()).map((playerId) => ({
+    player_id: playerId,
+    sport_id: SOFTBALL_SPORT_ID,
+    created_at: nowIso(),
+  }));
+  const playerSportsInsert = await supabase.from(TABLES.playerSports).upsert(playerSports);
+
+  if (playerSportsInsert.error) {
+    throw playerSportsInsert.error;
   }
 
   const settingsUpdate = await supabase
@@ -227,16 +247,11 @@ async function ensureFamilySettings(supabase: Supabase, familyId: string) {
 async function ensureFamilyTemplates(supabase: Supabase, familyId: string) {
   const familyTemplates = await supabase
     .from(TABLES.drillTemplates)
-    .select("id")
-    .eq("family_id", familyId)
-    .limit(1);
+    .select("sport_id, practice_type")
+    .eq("family_id", familyId);
 
   if (familyTemplates.error) {
     throw familyTemplates.error;
-  }
-
-  if ((familyTemplates.data ?? []).length > 0) {
-    return;
   }
 
   const globals = await supabase
@@ -249,7 +264,14 @@ async function ensureFamilyTemplates(supabase: Supabase, familyId: string) {
     throw globals.error;
   }
 
-  const sourceTemplates = (globals.data ?? []) as Array<Omit<DrillTemplate, "items">>;
+  const existingKeys = new Set(
+    (familyTemplates.data ?? []).map(
+      (template) => `${template.sport_id}:${template.practice_type}`,
+    ),
+  );
+  const sourceTemplates = ((globals.data ?? []) as Array<Omit<DrillTemplate, "items">>).filter(
+    (template) => !existingKeys.has(`${template.sport_id}:${template.practice_type}`),
+  );
 
   if (sourceTemplates.length === 0) {
     return;
@@ -275,6 +297,7 @@ async function ensureFamilyTemplates(supabase: Supabase, familyId: string) {
     return {
       id,
       family_id: familyId,
+      sport_id: template.sport_id,
       name: template.name,
       practice_type: template.practice_type,
       editable: true,
@@ -380,7 +403,7 @@ async function ensureFamilyWorkspace(supabase: Supabase) {
       .from(TABLES.families)
       .insert({
         id: createId(),
-        name: "My softball family",
+        name: "My family",
         created_by: user.id,
         created_at: timestamp,
         updated_at: timestamp,
@@ -417,15 +440,16 @@ function chooseFamilyTemplates(templates: DrillTemplate[], familyId: string) {
   const byType = new Map<string, DrillTemplate>();
 
   for (const template of templates) {
-    const existing = byType.get(template.practice_type);
+    const key = `${template.sport_id}:${template.practice_type}`;
+    const existing = byType.get(key);
 
     if (!existing || template.family_id === familyId) {
-      byType.set(template.practice_type, template);
+      byType.set(key, template);
     }
   }
 
-  return Array.from(byType.values()).sort((a, b) =>
-    a.practice_type.localeCompare(b.practice_type),
+  return Array.from(byType.values()).sort(
+    (a, b) => a.sport_id.localeCompare(b.sport_id) || a.practice_type.localeCompare(b.practice_type),
   );
 }
 
@@ -440,6 +464,8 @@ export async function loadAppData(): Promise<AppDataResult> {
   await importStoredLocalData(supabase, family.id);
   const [
     playersResult,
+    sportsResult,
+    playerSportsResult,
     sessionsResult,
     drillsResult,
     templatesResult,
@@ -453,6 +479,12 @@ export async function loadAppData(): Promise<AppDataResult> {
       .select("*")
       .eq("family_id", family.id)
       .order("display_order", { ascending: true }),
+    supabase
+      .from(TABLES.sports)
+      .select("*")
+      .or(`family_id.is.null,family_id.eq.${family.id}`)
+      .order("display_order", { ascending: true }),
+    supabase.from(TABLES.playerSports).select("*"),
     supabase.from(TABLES.practiceSessions).select("*").order("created_at", { ascending: false }),
     supabase.from(TABLES.practiceSessionDrills).select("*"),
     supabase
@@ -468,6 +500,8 @@ export async function loadAppData(): Promise<AppDataResult> {
 
   const error = [
     playersResult.error,
+    sportsResult.error,
+    playerSportsResult.error,
     sessionsResult.error,
     drillsResult.error,
     templatesResult.error,
@@ -501,6 +535,8 @@ export async function loadAppData(): Promise<AppDataResult> {
   const data: AppData = {
     family,
     players: (playersResult.data ?? []) as Player[],
+    sports: (sportsResult.data ?? []) as Sport[],
+    playerSports: (playerSportsResult.data ?? []) as PlayerSport[],
     sessions,
     templates,
     badges: badgesResult.data ?? [],
@@ -514,6 +550,7 @@ export async function loadAppData(): Promise<AppDataResult> {
 export function createPracticeSessionFromInput(input: LogSessionInput) {
   const session = makeLocalPracticeSession({
     player_id: input.player.id,
+    sport_id: input.sport_id,
     practice_type: input.practice_type,
     minutes: input.minutes,
     feeling: input.feeling ?? null,
@@ -625,6 +662,42 @@ export async function savePlayerRemote(player: Player) {
   }
 }
 
+export async function saveSportRemote(sport: Sport) {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const result = await supabase.from(TABLES.sports).upsert(sport);
+
+  if (result.error) {
+    throw result.error;
+  }
+}
+
+export async function replacePlayerSportsRemote(playerId: string, playerSports: PlayerSport[]) {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const deleteResult = await supabase.from(TABLES.playerSports).delete().eq("player_id", playerId);
+
+  if (deleteResult.error) {
+    throw deleteResult.error;
+  }
+
+  if (playerSports.length > 0) {
+    const insertResult = await supabase.from(TABLES.playerSports).insert(playerSports);
+
+    if (insertResult.error) {
+      throw insertResult.error;
+    }
+  }
+}
+
 export async function deletePlayerRemote(playerId: string) {
   const supabase = getSupabaseBrowserClient();
 
@@ -685,6 +758,7 @@ export async function saveTemplateRemote(template: DrillTemplate) {
   const templateRow = {
     id: template.id,
     family_id: template.family_id,
+    sport_id: template.sport_id,
     name: template.name,
     practice_type: template.practice_type,
     editable: template.editable,

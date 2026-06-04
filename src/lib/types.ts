@@ -1,7 +1,6 @@
 import type {
   FEELINGS,
   FOCUS_TAGS,
-  PRACTICE_TYPES,
   SUMMER_MILESTONE_BADGE_CODES,
 } from "@/lib/config";
 
@@ -9,7 +8,6 @@ export type Handedness = "L" | "R" | "switch";
 export type SessionStatus = "pending" | "approved" | "rejected";
 export type HittingSide = "L" | "R" | "both";
 export type FamilyMemberRole = "owner" | "parent";
-export type PracticeType = (typeof PRACTICE_TYPES)[number];
 export type Feeling = (typeof FEELINGS)[number];
 export type FocusTag = (typeof FOCUS_TAGS)[number];
 export type SummerMilestoneCode = (typeof SUMMER_MILESTONE_BADGE_CODES)[number];
@@ -28,6 +26,21 @@ export interface FamilyMember {
   family_id: string;
   user_id: string;
   role: FamilyMemberRole;
+  created_at: string;
+}
+
+export interface Sport {
+  id: string;
+  family_id: string | null;
+  name: string;
+  icon: string;
+  display_order: number;
+  created_at: string;
+}
+
+export interface PlayerSport {
+  player_id: string;
+  sport_id: string;
   created_at: string;
 }
 
@@ -55,6 +68,7 @@ export interface PracticeSessionDrill {
 export interface PracticeSession {
   id: string;
   player_id: string;
+  sport_id: string;
   practice_type: string;
   minutes: number;
   feeling: string | null;
@@ -74,6 +88,7 @@ export interface PracticeSession {
 export interface DrillTemplate {
   id: string;
   family_id: string | null;
+  sport_id: string;
   name: string;
   practice_type: string;
   editable: boolean;
@@ -118,6 +133,8 @@ export interface AppSettings {
 export interface AppData {
   family: Family | null;
   players: Player[];
+  sports: Sport[];
+  playerSports: PlayerSport[];
   sessions: PracticeSession[];
   templates: DrillTemplate[];
   badges: Badge[];
@@ -132,6 +149,7 @@ export interface AppDataResult {
 
 export interface LogSessionInput {
   player: Player;
+  sport_id: string;
   practice_type: string;
   minutes: number;
   drills: Array<{ label: string; completed: boolean }>;
@@ -144,6 +162,7 @@ export interface LogSessionInput {
 }
 
 export interface SessionPatch {
+  sport_id?: string;
   practice_type?: string;
   minutes?: number;
   feeling?: string | null;

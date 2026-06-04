@@ -2,16 +2,6 @@ export const APP_TZ = "America/New_York";
 
 export const WEEK_START_DAY = 1;
 
-export const PRACTICE_TYPES = [
-  "Tee Work",
-  "Side Soft Toss",
-  "Fielding",
-  "Throwing",
-  "Conditioning",
-  "Game",
-  "Other",
-] as const;
-
 export const MINUTE_PRESETS = [5, 10, 15, 20, 30, 45, 60] as const;
 
 export const FEELINGS = ["Great", "Good", "Hard", "Frustrating"] as const;

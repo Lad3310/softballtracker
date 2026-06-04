@@ -64,23 +64,9 @@ export function recomputePlayerBadges(
 
   for (const [weekKey, weekSessions] of weeks.entries()) {
     const minutes = weekSessions.reduce((sum, session) => sum + session.minutes, 0);
-    const teeCount = weekSessions.filter(
-      (session) => session.practice_type === "Tee Work",
-    ).length;
-    const softTossCount = weekSessions.filter(
-      (session) => session.practice_type === "Side Soft Toss",
-    ).length;
 
     if (minutes >= 90) {
       addAward("ninety_minute_week", weekKey);
-    }
-
-    if (teeCount >= 3) {
-      addAward("tee_work_complete", weekKey);
-    }
-
-    if (softTossCount >= 3) {
-      addAward("soft_toss_complete", weekKey);
     }
   }
 
@@ -92,19 +78,6 @@ export function recomputePlayerBadges(
 
   if (maxStreak >= 5) {
     addAward("five_day_streak");
-  }
-
-  const hasBalancedSession =
-    player.handedness === "switch" &&
-    sessions.some(
-      (session) =>
-        session.player_id === player.id &&
-        session.status === "approved" &&
-        session.hitting_side === "both",
-    );
-
-  if (hasBalancedSession) {
-    addAward("balanced_hitter");
   }
 
   const summerMinutes = getSummerMinutes(player, sessions);

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Summer Softball Practice Tracker",
-  description: "Quick practice logging and parent goal tracking for summer softball.",
+  title: "Family Practice Tracker",
+  description: "Quick multi-sport practice logging and parent goal tracking.",
 };
 
 export default function RootLayout({
