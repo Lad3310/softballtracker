@@ -15,17 +15,22 @@ import type {
 const LOCAL_DATA_KEY = "softball-tracker:data";
 const QUEUED_SESSIONS_KEY = "softball-tracker:queued-sessions";
 const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
+const HOCKEY_SPORT_ID = "10000000-0000-4000-8000-000000000005";
+const RETIRED_STARTER_SPORT_IDS = new Set([
+  "10000000-0000-4000-8000-000000000002",
+  "10000000-0000-4000-8000-000000000003",
+  "10000000-0000-4000-8000-000000000004",
+]);
 
 const SPORT_SEEDS = [
   [SOFTBALL_SPORT_ID, "Softball", "SB"],
-  ["10000000-0000-4000-8000-000000000002", "Soccer", "SC"],
-  ["10000000-0000-4000-8000-000000000003", "Basketball", "BB"],
-  ["10000000-0000-4000-8000-000000000004", "Volleyball", "VB"],
+  [HOCKEY_SPORT_ID, "Hockey", "HK"],
 ] as const;
 
 const TEMPLATE_SEEDS = [
   {
     id: "template-hitting",
+    sport_id: SOFTBALL_SPORT_ID,
     name: "Preset hitting",
     practice_type: "Game",
     items: [
@@ -39,6 +44,7 @@ const TEMPLATE_SEEDS = [
   },
   {
     id: "template-tee",
+    sport_id: SOFTBALL_SPORT_ID,
     name: "Preset tee",
     practice_type: "Tee Work",
     items: [
@@ -50,6 +56,7 @@ const TEMPLATE_SEEDS = [
   },
   {
     id: "template-timing",
+    sport_id: SOFTBALL_SPORT_ID,
     name: "Preset timing",
     practice_type: "Side Soft Toss",
     items: [
@@ -61,9 +68,28 @@ const TEMPLATE_SEEDS = [
   },
   {
     id: "template-fielding",
+    sport_id: SOFTBALL_SPORT_ID,
     name: "Preset fielding",
     practice_type: "Fielding",
     items: ["ground balls", "fly balls", "throwing mechanics", "catching practice"],
+  },
+  {
+    id: "template-hockey-stickhandling",
+    sport_id: HOCKEY_SPORT_ID,
+    name: "Stickhandling",
+    practice_type: "Stickhandling",
+    items: [
+      "stationary puck control",
+      "forehand and backhand touches",
+      "stickhandle through cones",
+    ],
+  },
+  {
+    id: "template-hockey-shooting",
+    sport_id: HOCKEY_SPORT_ID,
+    name: "Shooting",
+    practice_type: "Shooting",
+    items: ["wrist shots", "backhand shots", "shoot to targets"],
   },
 ];
 
@@ -129,7 +155,7 @@ export function createSeedData(): AppData {
   const templates: DrillTemplate[] = TEMPLATE_SEEDS.map((template) => ({
     id: template.id,
     family_id: family.id,
-    sport_id: SOFTBALL_SPORT_ID,
+    sport_id: template.sport_id,
     name: template.name,
     practice_type: template.practice_type,
     editable: false,
@@ -203,20 +229,45 @@ export function loadStoredLocalData() {
   try {
     const seed = createSeedData();
     const parsed = JSON.parse(raw) as AppData;
+    const sessions = (parsed.sessions ?? []).map((session) => ({
+      ...session,
+      sport_id: session.sport_id ?? SOFTBALL_SPORT_ID,
+    }));
+    const historicalSportIds = new Set(sessions.map((session) => session.sport_id));
+    const storedSports = (parsed.sports ?? []).filter(
+      (sport) => !RETIRED_STARTER_SPORT_IDS.has(sport.id) || historicalSportIds.has(sport.id),
+    );
+    const sports = [
+      ...storedSports,
+      ...seed.sports.filter(
+        (seedSport) => !storedSports.some((storedSport) => storedSport.id === seedSport.id),
+      ),
+    ];
+    const storedTemplates = (parsed.templates ?? [])
+      .map((template) => ({
+        ...template,
+        sport_id: template.sport_id ?? SOFTBALL_SPORT_ID,
+      }))
+      .filter((template) => !RETIRED_STARTER_SPORT_IDS.has(template.sport_id));
+    const templateKeys = new Set(
+      storedTemplates.map((template) => `${template.sport_id}:${template.practice_type}`),
+    );
+    const templates = [
+      ...storedTemplates,
+      ...seed.templates.filter(
+        (template) => !templateKeys.has(`${template.sport_id}:${template.practice_type}`),
+      ),
+    ];
 
     return {
       ...seed,
       ...parsed,
-      sports: parsed.sports ?? seed.sports,
-      playerSports: parsed.playerSports ?? seed.playerSports,
-      sessions: (parsed.sessions ?? []).map((session) => ({
-        ...session,
-        sport_id: session.sport_id ?? SOFTBALL_SPORT_ID,
-      })),
-      templates: (parsed.templates ?? seed.templates).map((template) => ({
-        ...template,
-        sport_id: template.sport_id ?? SOFTBALL_SPORT_ID,
-      })),
+      sports,
+      playerSports: (parsed.playerSports ?? seed.playerSports).filter(
+        (playerSport) => !RETIRED_STARTER_SPORT_IDS.has(playerSport.sport_id),
+      ),
+      sessions,
+      templates,
       settings: parsed.settings ?? seed.settings,
     };
   } catch {
