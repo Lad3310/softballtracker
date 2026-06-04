@@ -21,7 +21,7 @@ import {
   Trophy,
   WifiOff,
 } from "lucide-react";
-import { FEELINGS, FOCUS_TAGS, MINUTE_PRESETS, PRACTICE_TYPES } from "@/lib/config";
+import { FEELINGS, MINUTE_PRESETS, PRACTICE_TYPES } from "@/lib/config";
 import {
   createPracticeSessionFromInput,
   loadAppData,
@@ -79,15 +79,23 @@ function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" 
 }
 
 function StatusNote({
-  queuedCount,
+  mode,
+  sessions,
 }: {
-  queuedCount: number;
+  mode: AppDataResult["mode"];
+  sessions: PracticeSession[];
 }) {
-  if (queuedCount > 0) {
+  const unsyncedCount = sessions.filter(
+    (session) => session.sync_state && session.sync_state !== "synced",
+  ).length;
+
+  if (unsyncedCount > 0) {
     return (
       <div className="flex items-center gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-900">
         <WifiOff className="h-4 w-4" />
-        {queuedCount} saved on this device
+        {mode === "local"
+          ? `Supabase is not connected. ${unsyncedCount} saved only on this device.`
+          : `${unsyncedCount} saved on this device and waiting to sync.`}
       </div>
     );
   }
@@ -97,12 +105,13 @@ function StatusNote({
 
 function PlayerPicker({
   data,
+  mode,
   onPickPlayer,
 }: {
   data: AppData;
+  mode: AppDataResult["mode"];
   onPickPlayer: (playerId: string) => void;
 }) {
-  const queuedCount = data.sessions.filter((session) => session.sync_state === "queued").length;
   const pendingCount = data.sessions.filter((session) => session.status === "pending").length;
 
   return (
@@ -126,7 +135,7 @@ function PlayerPicker({
       </header>
 
       <div className="mb-4">
-        <StatusNote queuedCount={queuedCount} />
+        <StatusNote mode={mode} sessions={data.sessions} />
       </div>
 
       <section className="mb-4 rounded-lg border border-supabase-border bg-supabase-50 p-4 shadow-sm">
@@ -257,12 +266,14 @@ function BadgeStrip({ player, data }: { player: Player; data: AppData }) {
 
 function PlayerDashboard({
   data,
+  mode,
   player,
   message,
   onBack,
   onLogPractice,
 }: {
   data: AppData;
+  mode: AppDataResult["mode"];
   player: Player;
   message: string | null;
   onBack: () => void;
@@ -273,7 +284,6 @@ function PlayerDashboard({
   const summer = getSummerProgress(player, data.sessions, today);
   const pendingMinutes = getPendingMinutes(data.sessions, player.id);
   const rejectedCount = getRejectedCount(data.sessions, player.id);
-  const queuedCount = data.sessions.filter((session) => session.sync_state === "queued").length;
 
   // ASSUMPTION: Ages are not confirmed, so kid-facing copy stays short with oversized controls for younger elementary readers.
   // ASSUMPTION: Rejected sessions do not interrupt the child flow; the dashboard only says they need another try.
@@ -305,7 +315,7 @@ function PlayerDashboard({
       </section>
 
       <div className="mt-4">
-        <StatusNote queuedCount={queuedCount} />
+        <StatusNote mode={mode} sessions={data.sessions} />
       </div>
 
       <section className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -400,9 +410,9 @@ function QuickLogFlow({
   const [minutes, setMinutes] = useState<number | null>(null);
   const [drills, setDrills] = useState<Array<{ label: string; completed: boolean }>>([]);
   const [feeling, setFeeling] = useState<string | null>(null);
-  const [focusTag, setFocusTag] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [hittingSide, setHittingSide] = useState<HittingSide | null>(null);
+  const [sessionDate, setSessionDate] = useState(() => getAppDateKey());
 
   const selectPracticeType = (type: string) => {
     const template = templates.find((candidate) => candidate.practice_type === type);
@@ -428,9 +438,9 @@ function QuickLogFlow({
       minutes,
       drills,
       feeling,
-      focus_tag: focusTag,
       notes: notes.trim() ? notes.trim() : null,
       hitting_side: hittingSide,
+      session_date: sessionDate,
       require_parent_approval: approvalRequired,
     });
   };
@@ -500,6 +510,17 @@ function QuickLogFlow({
 
       {step === "drills" ? (
         <section className="grid gap-4">
+          <label className="grid gap-2 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+            <span className="text-xl font-black text-stone-950">Practice date</span>
+            <input
+              className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+              onChange={(event) => setSessionDate(event.target.value)}
+              required
+              type="date"
+              value={sessionDate}
+            />
+          </label>
+
           <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="text-2xl font-black text-stone-950">Drills done</h2>
             {drills.length === 0 ? (
@@ -581,27 +602,6 @@ function QuickLogFlow({
                   )}
                   key={candidate}
                   onClick={() => setFeeling(candidate)}
-                  type="button"
-                >
-                  {candidate}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="text-xl font-black text-stone-950">Practice most</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {FOCUS_TAGS.map((candidate) => (
-                <button
-                  className={classNames(
-                    "min-h-12 rounded-lg border px-3 text-left text-base font-black",
-                    focusTag === candidate
-                      ? "border-sky-400 bg-sky-50 text-sky-950"
-                      : "border-stone-200 bg-white text-stone-700",
-                  )}
-                  key={candidate}
-                  onClick={() => setFocusTag(candidate)}
                   type="button"
                 >
                   {candidate}
@@ -841,6 +841,7 @@ export function HomeApp() {
     return (
       <PlayerPicker
         data={result.data}
+        mode={result.mode}
         onPickPlayer={(playerId) => {
           setSelectedPlayerId(playerId);
           setMessage(null);
@@ -866,6 +867,7 @@ export function HomeApp() {
     <PlayerDashboard
       data={result.data}
       message={message}
+      mode={result.mode}
       onBack={() => {
         setScreen("picker");
         setSelectedPlayerId(null);

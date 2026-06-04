@@ -25,8 +25,22 @@ You can also review and run the SQL directly in the Supabase SQL editor.
 
 Supabase Auth:
 
-- Enable email magic links in Supabase Auth.
-- Add your deployed domain and local dev URL to Auth redirect URLs.
+- Enable the Email provider in Supabase Auth, including new-user signups.
+- The sign-in screen supports one-time email links for existing users plus
+  email/password sign-in and account creation.
+- This app shares the `summerrewardsapp` Supabase project. Keep the existing
+  Summer Rewards production URL as the Auth Site URL unless you intentionally
+  want the softball tracker to be the project's default redirect.
+- Add both apps' production URLs to the Auth redirect allowlist. For the
+  softball tracker, add:
+  - `https://softballtracker.vercel.app/**`
+  - `https://*-joe-lairds-projects.vercel.app/**`
+  - `http://localhost:3000/**`
+- Each app must pass its own `redirectTo`/`emailRedirectTo` URL when starting
+  an auth flow. The softball tracker does this automatically using its current
+  origin.
+- Keep email confirmation enabled so new password accounts must confirm their
+  email before entering the tracker.
 - A signed-in parent gets a family workspace automatically.
 - Kids still do not have individual logins; they use player cards after a parent signs in on the shared device.
 
@@ -64,6 +78,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` is also supported for older Supabase projects. Do not expose a service role key in this app.
 
 Without Supabase env vars, the app runs with a local fallback so the UI can be tried on one device.
+For a Vercel deployment, add both public Supabase variables to the Vercel project and redeploy; `.env.local` only configures local development. When a parent first signs in after using local fallback, locally saved players and sessions are imported into the new Supabase family workspace.
 
 ## Notes
 

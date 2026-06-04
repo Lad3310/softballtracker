@@ -170,36 +170,51 @@ export function createSeedData(): AppData {
 }
 
 export function loadLocalData() {
+  const stored = loadStoredLocalData();
+
+  if (stored) {
+    return stored;
+  }
+
+  const data = createSeedData();
+  saveLocalData(data);
+  return data;
+}
+
+export function loadStoredLocalData() {
   if (!canUseStorage()) {
-    return createSeedData();
+    return null;
   }
 
   const raw = window.localStorage.getItem(LOCAL_DATA_KEY);
 
   if (!raw) {
-    const data = createSeedData();
-    saveLocalData(data);
-    return data;
+    return null;
   }
 
   try {
+    const seed = createSeedData();
     const parsed = JSON.parse(raw) as AppData;
 
     return {
-      ...createSeedData(),
+      ...seed,
       ...parsed,
-      settings: parsed.settings ?? createSeedData().settings,
+      settings: parsed.settings ?? seed.settings,
     };
   } catch {
-    const data = createSeedData();
-    saveLocalData(data);
-    return data;
+    return null;
   }
 }
 
 export function saveLocalData(data: AppData) {
   if (canUseStorage()) {
     window.localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(data));
+  }
+}
+
+export function clearLocalData() {
+  if (canUseStorage()) {
+    window.localStorage.removeItem(LOCAL_DATA_KEY);
   }
 }
 

@@ -2,9 +2,11 @@
 
 import { recomputePlayerBadges } from "@/lib/badges";
 import {
+  clearLocalData,
   clearSyncedQueuedSession,
   loadLocalData,
   loadQueuedSessions,
+  loadStoredLocalData,
   makeLocalPracticeSession,
   saveLocalData,
   saveQueuedSessions,
@@ -81,6 +83,113 @@ function drillRows(session: PracticeSession) {
     completed: drill.completed,
     created_at: drill.created_at,
   }));
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+async function importStoredLocalData(supabase: Supabase, familyId: string) {
+  const localData = loadStoredLocalData();
+
+  if (!localData || localData.sessions.length === 0) {
+    return;
+  }
+
+  const playersResult = await supabase
+    .from(TABLES.players)
+    .select("*")
+    .eq("family_id", familyId);
+
+  if (playersResult.error) {
+    throw playersResult.error;
+  }
+
+  const remotePlayers = (playersResult.data ?? []) as Player[];
+  const remotePlayersByName = new Map(
+    remotePlayers.map((player) => [player.name.trim().toLocaleLowerCase(), player]),
+  );
+  const playerIdMap = new Map<string, string>();
+  const playersToInsert: Player[] = [];
+
+  for (const localPlayer of localData.players) {
+    const remotePlayer = remotePlayersByName.get(localPlayer.name.trim().toLocaleLowerCase());
+
+    if (remotePlayer) {
+      playerIdMap.set(localPlayer.id, remotePlayer.id);
+      continue;
+    }
+
+    const player = {
+      ...localPlayer,
+      id: createId(),
+      family_id: familyId,
+    };
+    playerIdMap.set(localPlayer.id, player.id);
+    playersToInsert.push(player);
+  }
+
+  if (playersToInsert.length > 0) {
+    const playerInsert = await supabase.from(TABLES.players).upsert(playersToInsert);
+
+    if (playerInsert.error) {
+      throw playerInsert.error;
+    }
+  }
+
+  const sessions = localData.sessions.map((localSession) => {
+    const playerId = playerIdMap.get(localSession.player_id);
+
+    if (!playerId) {
+      throw new Error("Could not match a locally saved practice to a player.");
+    }
+
+    const sessionId = isUuid(localSession.id) ? localSession.id : createId();
+
+    return {
+      ...localSession,
+      id: sessionId,
+      player_id: playerId,
+      drills: localSession.drills.map((drill) => ({
+        ...drill,
+        id: isUuid(drill.id) ? drill.id : createId(),
+        session_id: sessionId,
+      })),
+    };
+  });
+  const sessionInsert = await supabase
+    .from(TABLES.practiceSessions)
+    .upsert(sessions.map(sessionRow));
+
+  if (sessionInsert.error) {
+    throw sessionInsert.error;
+  }
+
+  const drills = sessions.flatMap(drillRows);
+
+  if (drills.length > 0) {
+    const drillInsert = await supabase.from(TABLES.practiceSessionDrills).upsert(drills);
+
+    if (drillInsert.error) {
+      throw drillInsert.error;
+    }
+  }
+
+  const settingsUpdate = await supabase
+    .from(TABLES.appSettings)
+    .update({
+      require_parent_approval: localData.settings.require_parent_approval,
+      updated_at: nowIso(),
+    })
+    .eq("family_id", familyId);
+
+  if (settingsUpdate.error) {
+    throw settingsUpdate.error;
+  }
+
+  clearLocalData();
 }
 
 async function ensureFamilySettings(supabase: Supabase, familyId: string) {
@@ -312,6 +421,7 @@ export async function loadAppData(): Promise<AppDataResult> {
   }
 
   const { family, settings } = await ensureFamilyWorkspace(supabase);
+  await importStoredLocalData(supabase, family.id);
   const [
     playersResult,
     sessionsResult,

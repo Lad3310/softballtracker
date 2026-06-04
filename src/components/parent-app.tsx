@@ -72,6 +72,18 @@ function sessionStatusStyle(status: SessionStatus) {
   return "border-amber-200 bg-amber-50 text-amber-800";
 }
 
+function syncStateLabel(syncState: PracticeSession["sync_state"], mode: AppDataResult["mode"]) {
+  if (syncState === "queued") {
+    return mode === "local" ? "local only" : "waiting to sync";
+  }
+
+  if (syncState === "error") {
+    return "sync failed";
+  }
+
+  return syncState;
+}
+
 function SessionEditor({
   session,
   onCancel,
@@ -871,6 +883,12 @@ export function ParentApp() {
         </div>
       ) : null}
 
+      {mode === "local" ? (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 font-bold text-amber-950">
+          Supabase is not connected in this build. Changes are saved only on this device.
+        </div>
+      ) : null}
+
       <section className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
           <p className="text-sm font-black uppercase tracking-wide text-stone-500">Pending</p>
@@ -982,7 +1000,7 @@ export function ParentApp() {
                     </span>
                     {session.sync_state && session.sync_state !== "synced" ? (
                       <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-black text-sky-800">
-                        {session.sync_state}
+                        {syncStateLabel(session.sync_state, mode)}
                       </span>
                     ) : null}
                   </div>
