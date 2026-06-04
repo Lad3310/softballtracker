@@ -11,6 +11,7 @@ The migration files are:
 - `supabase/migrations/20260603193711_optimize_softball_rls_indexes.sql`
 - `supabase/migrations/20260604103919_fix_softball_membership_rls_recursion.sql`
 - `supabase/migrations/20260604152546_add_multi_sport_support.sql`
+- `supabase/migrations/20260604201735_invite_only_tracker_access.sql`
 
 The migrations create the original practice schema, add Supabase Auth family scoping and RLS, and then add a backward-compatible multi-sport catalog, child-to-sport assignments, starter plans, and generic season badges.
 
@@ -28,8 +29,9 @@ You can also review and run the SQL directly in the Supabase SQL editor.
 Supabase Auth:
 
 - Enable the Email provider in Supabase Auth, including new-user signups.
-- The sign-in screen supports one-time email links for existing users plus
-  email/password sign-in and account creation.
+- The sign-in screen supports one-time email links and password sign-in for
+  existing users. Account creation appears only from a private tracker invite
+  link created on an existing parent's dashboard.
 - This app shares the `summerrewardsapp` Supabase project. Keep the existing
   Summer Rewards production URL as the Auth Site URL unless you intentionally
   want the softball tracker to be the project's default redirect.
@@ -43,7 +45,12 @@ Supabase Auth:
   origin.
 - Keep email confirmation enabled so new password accounts must confirm their
   email before entering the tracker.
-- A signed-in parent gets a family workspace automatically.
+- Only existing tracker parents and invited email addresses can create a
+  tracker family workspace. Other users in the shared Supabase Auth project
+  cannot enter this app.
+- Tracker invite links are copied and shared manually. Configure custom SMTP
+  in Supabase before relying on Auth confirmation or magic-link emails for
+  external users.
 - Kids still do not have individual logins; they use athlete cards after a parent signs in on the shared device.
 
 To preserve data from before the auth migration, create your parent account, create/find its `softball_families.id`, then assign old unscoped rows:

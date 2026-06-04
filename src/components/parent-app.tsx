@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Check,
   ClipboardList,
+  Copy,
   Edit3,
   Frown,
   Medal,
@@ -19,8 +20,11 @@ import { FEELINGS, FOCUS_TAGS } from "@/lib/config";
 import { recomputePlayerBadges } from "@/lib/badges";
 import {
   deletePlayerRemote,
+  deleteInvitationRemote,
   deleteSessionRemote,
+  createInvitationRemote,
   loadAppData,
+  loadInvitationsRemote,
   persistLocalState,
   recomputeBadgesForPlayer,
   replacePlayerSportsRemote,
@@ -36,6 +40,7 @@ import { getMaxStreak, getSummerProgress, getWeeklyProgress } from "@/lib/progre
 import type {
   AppData,
   AppDataResult,
+  AppInvitation,
   DrillTemplate,
   Handedness,
   HittingSide,
@@ -590,16 +595,20 @@ export function ParentApp() {
   const [newSportName, setNewSportName] = useState("");
   const [newPlanName, setNewPlanName] = useState("");
   const [newPlanSportId, setNewPlanSportId] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitations, setInvitations] = useState<AppInvitation[]>([]);
+  const [inviting, setInviting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    loadAppData()
-      .then((loaded) => {
+    Promise.all([loadAppData(), loadInvitationsRemote()])
+      .then(([loaded, loadedInvitations]) => {
         if (mounted) {
           setResult(loaded);
+          setInvitations(loadedInvitations);
         }
       })
       .catch((caught: unknown) => {
@@ -967,6 +976,57 @@ export function ParentApp() {
     }
   };
 
+  const createInvitation = async () => {
+    const normalizedEmail = inviteEmail.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return;
+    }
+
+    setInviting(true);
+
+    try {
+      const invitation = await createInvitationRemote(normalizedEmail);
+      setInvitations((current) => [invitation, ...current]);
+      setInviteEmail("");
+      setNotice("Private invitation link created. Copy it and send it to the parent.");
+    } catch (caught) {
+      setNotice(
+        caught instanceof Error
+          ? caught.message
+          : "Could not create the invitation.",
+      );
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const copyInvitation = async (invitation: AppInvitation) => {
+    const inviteUrl = new URL("/", window.location.origin);
+    inviteUrl.searchParams.set("invite", invitation.token);
+
+    try {
+      await navigator.clipboard.writeText(inviteUrl.toString());
+      setNotice(`Invitation link copied for ${invitation.email}.`);
+    } catch {
+      setNotice(`Could not copy the link. Open ${inviteUrl.toString()} to share it.`);
+    }
+  };
+
+  const deleteInvitation = async (invitation: AppInvitation) => {
+    try {
+      await deleteInvitationRemote(invitation.id);
+      setInvitations((current) =>
+        current.filter((candidate) => candidate.id !== invitation.id),
+      );
+      setNotice("Invitation removed.");
+    } catch (caught) {
+      setNotice(
+        caught instanceof Error ? caught.message : "Could not remove the invitation.",
+      );
+    }
+  };
+
   if (error) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-4">
@@ -1059,6 +1119,77 @@ export function ParentApp() {
           <p className="text-sm font-black uppercase tracking-wide text-stone-500">Sessions</p>
           <p className="mt-2 text-4xl font-black text-stone-950">{data.sessions.length}</p>
         </div>
+      </section>
+
+      <section className="mb-6 rounded-lg border border-supabase-border bg-supabase-50 p-4 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <h2 className="text-2xl font-black text-stone-950">Invite a family</h2>
+            <p className="mt-1 font-bold text-stone-600">
+              Create a private link for another parent. They get their own separate family workspace.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[minmax(15rem,1fr)_auto]">
+            <label>
+              <span className="sr-only">Parent email</span>
+              <input
+                aria-label="Parent email"
+                className="min-h-11 w-full rounded-md border border-stone-200 bg-white px-3 font-bold text-stone-950"
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="parent@example.com"
+                type="email"
+                value={inviteEmail}
+              />
+            </label>
+            <button
+              className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={inviting || !inviteEmail.trim()}
+              onClick={() => void createInvitation()}
+              type="button"
+            >
+              <Plus className="h-4 w-4" />
+              {inviting ? "Creating" : "Create invite"}
+            </button>
+          </div>
+        </div>
+        <p className="mt-3 text-sm font-bold text-supabase-900">
+          Share the copied link by text or email. Existing Summer Rewards users sign in with their same account; new users can create one from the link.
+        </p>
+        {invitations.length > 0 ? (
+          <div className="mt-4 grid gap-2">
+            {invitations.map((invitation) => (
+              <article
+                className="grid gap-3 rounded-md border border-supabase-border bg-white p-3 sm:grid-cols-[1fr_auto]"
+                key={invitation.id}
+              >
+                <div>
+                  <p className="font-black text-stone-950">{invitation.email}</p>
+                  <p className="mt-1 text-sm font-bold text-stone-500">
+                    {invitation.accepted_at ? "Joined tracker" : "Waiting to join"}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="flex min-h-10 items-center gap-2 rounded-md border border-stone-200 px-3 text-sm font-black text-stone-700"
+                    onClick={() => void copyInvitation(invitation)}
+                    type="button"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy link
+                  </button>
+                  <button
+                    aria-label={`Remove invitation for ${invitation.email}`}
+                    className="flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 text-rose-700"
+                    onClick={() => void deleteInvitation(invitation)}
+                    type="button"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="mb-6">

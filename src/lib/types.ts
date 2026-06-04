@@ -29,6 +29,16 @@ export interface FamilyMember {
   created_at: string;
 }
 
+export interface AppInvitation {
+  id: string;
+  email: string;
+  token: string;
+  invited_by: string;
+  accepted_by: string | null;
+  accepted_at: string | null;
+  created_at: string;
+}
+
 export interface Sport {
   id: string;
   family_id: string | null;

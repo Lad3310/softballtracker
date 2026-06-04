@@ -15,11 +15,19 @@ import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/lib/supabase";
 
 type AuthMethod = "email-link" | "password";
 type PasswordAction = "sign-in" | "sign-up";
+type AccessStatus = "checking" | "allowed" | "denied";
 
 const NEW_ACCOUNT_PASSWORD_MIN_LENGTH = 6;
 
 function getAuthRedirectUrl() {
-  return new URL("/", window.location.origin).toString();
+  const redirectUrl = new URL("/", window.location.origin);
+  const inviteToken = new URLSearchParams(window.location.search).get("invite");
+
+  if (inviteToken) {
+    redirectUrl.searchParams.set("invite", inviteToken);
+  }
+
+  return redirectUrl.toString();
 }
 
 export function AuthGate({
@@ -36,6 +44,8 @@ export function AuthGate({
   const [authMethod, setAuthMethod] = useState<AuthMethod>("email-link");
   const [passwordAction, setPasswordAction] =
     useState<PasswordAction>("sign-in");
+  const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
+  const [hasInviteLink, setHasInviteLink] = useState(false);
   const [loading, setLoading] = useState(hasSupabaseConfig());
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -43,11 +53,70 @@ export function AuthGate({
   const supabase = getSupabaseBrowserClient();
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setHasInviteLink(
+        Boolean(new URLSearchParams(window.location.search).get("invite")),
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
     if (!supabase) {
       return;
     }
 
     let mounted = true;
+
+    const applyUser = async (activeUser: User | null) => {
+      if (!mounted) {
+        return;
+      }
+
+      if (!activeUser) {
+        setUser(null);
+        setAccessStatus("checking");
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setUser(activeUser);
+      setAccessStatus("checking");
+
+      const normalizedEmail = activeUser.email?.trim().toLowerCase() ?? "";
+      const [membership, invitation] = await Promise.all([
+        supabase
+          .from("softball_family_members")
+          .select("id")
+          .eq("user_id", activeUser.id)
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("softball_app_invitations")
+          .select("id")
+          .eq("email", normalizedEmail)
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (!mounted) {
+        return;
+      }
+
+      const accessError = membership.error ?? invitation.error;
+
+      if (accessError) {
+        setError(accessError.message);
+        setAccessStatus("denied");
+        setLoading(false);
+        return;
+      }
+
+      setAccessStatus(membership.data || invitation.data ? "allowed" : "denied");
+      setLoading(false);
+    };
 
     supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (!mounted) {
@@ -58,16 +127,16 @@ export function AuthGate({
         setError(sessionError.message);
       }
 
-      setUser(data.session?.user ?? null);
-      setLoading(false);
+      void applyUser(data.session?.user ?? null);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
       setError(null);
+      window.setTimeout(() => {
+        void applyUser(session?.user ?? null);
+      }, 0);
     });
 
     return () => {
@@ -131,6 +200,11 @@ export function AuthGate({
       return;
     }
 
+    if (passwordAction === "sign-up" && !hasInviteLink) {
+      setError("A private tracker invitation link is required to create an account.");
+      return;
+    }
+
     setSubmitting(true);
 
     if (passwordAction === "sign-in") {
@@ -172,22 +246,23 @@ export function AuthGate({
     }
 
     setMessage(
-      "Account created. Check your email to confirm it, then return here to sign in.",
+      "Signup request received. Check your email if this address is new. If it already has a Supabase account, choose Sign in instead.",
     );
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setAccessStatus("checking");
   };
 
-  if (loading) {
+  if (loading || (user && accessStatus === "checking")) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-4">
         <section className="rounded-lg border border-stone-200 bg-white p-6 text-center shadow-sm">
           <Sparkles className="mx-auto h-10 w-10 animate-pulse text-supabase-700" />
           <p className="mt-3 text-xl font-black text-stone-950">
-            Checking parent sign-in.
+            Checking parent invitation.
           </p>
         </section>
       </main>
@@ -270,10 +345,11 @@ export function AuthGate({
                     ? "border-supabase-border bg-supabase-50 text-supabase-900"
                     : "border-stone-200 text-stone-500 hover:text-stone-800"
                 }`}
+                disabled={!hasInviteLink}
                 onClick={() => choosePasswordAction("sign-up")}
                 type="button"
               >
-                Create account
+                {hasInviteLink ? "Create account" : "Invite required"}
               </button>
             </div>
           ) : null}
@@ -365,10 +441,38 @@ export function AuthGate({
           {message ? <p className="mt-4 font-bold text-supabase-800">{message}</p> : null}
           {error ? <p className="mt-4 font-bold text-rose-700">{error}</p> : null}
           <p className="mt-5 text-sm font-medium text-stone-500">
-            Email links only work for existing accounts. New parents can create
-            an account with a password. Kids still use athlete cards after a
-            parent signs in on this device.
+            Email links only work for existing accounts. New families can
+            create an account from a private tracker invitation link. Kids
+            still use athlete cards after a parent signs in on this device.
           </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (accessStatus === "denied") {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-6">
+        <section className="rounded-lg border border-amber-300 bg-white p-5 text-center shadow-sm">
+          <ShieldCheck className="mx-auto h-12 w-12 text-amber-600" />
+          <p className="mt-4 text-sm font-black uppercase tracking-wide text-amber-700">
+            Invitation only
+          </p>
+          <h1 className="mt-1 text-3xl font-black text-stone-950">
+            This account needs a tracker invite
+          </h1>
+          <p className="mt-3 font-bold text-stone-600">
+            Ask a current practice-tracker parent to invite {user.email}.
+            Your shared Supabase account still works normally in other apps.
+          </p>
+          <button
+            className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-stone-200 px-4 font-black text-stone-700"
+            onClick={signOut}
+            type="button"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
         </section>
       </main>
     );

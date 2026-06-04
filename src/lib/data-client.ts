@@ -16,6 +16,7 @@ import { createId, getAppDateKey, nowIso } from "@/lib/time";
 import type {
   AppData,
   AppDataResult,
+  AppInvitation,
   AppSettings,
   DrillTemplate,
   DrillTemplateItem,
@@ -35,6 +36,7 @@ const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
 
 const TABLES = {
   appSettings: "softball_app_settings",
+  appInvitations: "softball_app_invitations",
   badges: "softball_badges",
   drillTemplateItems: "softball_drill_template_items",
   drillTemplates: "softball_drill_templates",
@@ -47,6 +49,78 @@ const TABLES = {
   practiceSessions: "softball_practice_sessions",
   sports: "softball_sports",
 } as const;
+
+export async function loadInvitationsRemote() {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return [] as AppInvitation[];
+  }
+
+  const result = await supabase
+    .from(TABLES.appInvitations)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return (result.data ?? []) as AppInvitation[];
+}
+
+export async function createInvitationRemote(email: string) {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    throw new Error("Supabase is required to create invitations.");
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    throw userError;
+  }
+
+  if (!user) {
+    throw new Error("Please sign in before creating an invitation.");
+  }
+
+  const result = await supabase
+    .from(TABLES.appInvitations)
+    .insert({
+      email: email.trim().toLowerCase(),
+      invited_by: user.id,
+    })
+    .select("*")
+    .single();
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data as AppInvitation;
+}
+
+export async function deleteInvitationRemote(invitationId: string) {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return;
+  }
+
+  const result = await supabase
+    .from(TABLES.appInvitations)
+    .delete()
+    .eq("id", invitationId);
+
+  if (result.error) {
+    throw result.error;
+  }
+}
 
 function mergeQueuedSessions(data: AppData) {
   const queued = loadQueuedSessions();
