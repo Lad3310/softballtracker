@@ -360,27 +360,44 @@ async function ensureFamilyWorkspace(supabase: Supabase) {
     return { family, settings };
   }
 
-  const timestamp = nowIso();
-  const familyId = createId();
-  const familyInsert = await supabase
+  const existingFamily = await supabase
     .from(TABLES.families)
-    .insert({
-      id: familyId,
-      name: "My softball family",
-      created_by: user.id,
-      created_at: timestamp,
-      updated_at: timestamp,
-    })
     .select("*")
-    .single();
+    .eq("created_by", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
-  if (familyInsert.error) {
-    throw familyInsert.error;
+  if (existingFamily.error) {
+    throw existingFamily.error;
+  }
+
+  const timestamp = nowIso();
+  let family = existingFamily.data as Family | null;
+
+  if (!family) {
+    const familyInsert = await supabase
+      .from(TABLES.families)
+      .insert({
+        id: createId(),
+        name: "My softball family",
+        created_by: user.id,
+        created_at: timestamp,
+        updated_at: timestamp,
+      })
+      .select("*")
+      .single();
+
+    if (familyInsert.error) {
+      throw familyInsert.error;
+    }
+
+    family = familyInsert.data as Family;
   }
 
   const memberInsert = await supabase.from(TABLES.familyMembers).insert({
     id: createId(),
-    family_id: familyId,
+    family_id: family.id,
     user_id: user.id,
     role: "owner",
     created_at: timestamp,
@@ -390,7 +407,6 @@ async function ensureFamilyWorkspace(supabase: Supabase) {
     throw memberInsert.error;
   }
 
-  const family = familyInsert.data as Family;
   const settings = await ensureFamilySettings(supabase, family.id);
   await ensureFamilyTemplates(supabase, family.id);
 
