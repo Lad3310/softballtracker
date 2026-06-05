@@ -107,7 +107,7 @@ function PlayerPicker({
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-supabase-800">
-            Family Practice
+            training-app
           </p>
           <h1 className="mt-1 text-3xl font-black text-stone-950 sm:text-5xl">
             Pick your athlete

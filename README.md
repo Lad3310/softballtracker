@@ -1,4 +1,4 @@
-# Family Practice Tracker
+# training-app
 
 Invite-only, mobile-first Next.js app for multi-sport child practice logging and parent review/goal tracking.
 
@@ -16,7 +16,7 @@ The migration files are:
 
 The migrations create the original practice schema, add Supabase Auth family scoping and RLS, and then add a backward-compatible multi-sport catalog, child-to-sport assignments, starter plans, and generic season badges.
 
-The softball tracker is designed to share the existing `summerrewardsapp` Supabase project safely. Its tables are prefixed with `softball_` so they do not collide with the rewards app's existing `families`, `family_members`, `badges`, and other tables.
+training-app is designed to share the existing `summerrewardsapp` Supabase project safely. Its tables are still prefixed with `softball_` for backward compatibility, so they do not collide with the rewards app's existing `families`, `family_members`, `badges`, and other tables.
 
 Apply it with the Supabase CLI after linking a project:
 
@@ -35,14 +35,14 @@ Supabase Auth:
   link created on an existing parent's dashboard.
 - This app shares the `summerrewardsapp` Supabase project. Keep the existing
   Summer Rewards production URL as the Auth Site URL unless you intentionally
-  want the softball tracker to be the project's default redirect.
+  want training-app to be the project's default redirect.
 - Add both apps' production URLs to the Auth redirect allowlist. For the
-  softball tracker, add:
+  training app, add:
   - `https://softballtracker.vercel.app/**`
   - `https://*-joe-lairds-projects.vercel.app/**`
   - `http://localhost:3000/**`
 - Each app must pass its own `redirectTo`/`emailRedirectTo` URL when starting
-  an auth flow. The softball tracker does this automatically using its current
+  an auth flow. training-app does this automatically using its current
   origin.
 - Keep email confirmation enabled so new password accounts must confirm their
   email before entering the tracker.

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Family Practice Tracker",
-  description: "Quick multi-sport practice logging and parent goal tracking.",
+  title: "training-app",
+  description: "Invite-only training logs, practice plans, and parent goal tracking.",
 };
 
 export default function RootLayout({
