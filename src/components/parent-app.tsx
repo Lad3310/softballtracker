@@ -14,11 +14,14 @@ import {
   Save,
   Settings,
   Trash2,
+  UserPlus,
   X,
 } from "lucide-react";
 import { FEELINGS, FOCUS_TAGS } from "@/lib/config";
 import { recomputePlayerBadges } from "@/lib/badges";
+import { parsePositiveIntegerInput } from "@/lib/input";
 import {
+  canManageInvitationsRemote,
   deletePlayerRemote,
   deleteInvitationRemote,
   deleteSessionRemote,
@@ -69,6 +72,58 @@ function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" 
   );
 }
 
+type ToastMessage = {
+  message: string;
+  tone: "success" | "error";
+};
+
+function Toast({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastMessage | null;
+  onDismiss: () => void;
+}) {
+  if (!toast) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-live="polite"
+      className="fixed bottom-4 left-4 right-4 z-30 sm:left-auto sm:w-full sm:max-w-sm"
+      role="status"
+    >
+      <div
+        className={classNames(
+          "flex items-start gap-3 rounded-md border bg-white p-4 shadow-lg",
+          toast.tone === "success"
+            ? "border-supabase-border text-stone-950"
+            : "border-rose-200 text-rose-950",
+        )}
+      >
+        <span
+          className={classNames(
+            "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+            toast.tone === "success" ? "bg-supabase text-stone-950" : "bg-rose-100 text-rose-700",
+          )}
+        >
+          {toast.tone === "success" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+        </span>
+        <p className="flex-1 text-sm font-black">{toast.message}</p>
+        <button
+          aria-label="Dismiss notification"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-stone-200 text-stone-500"
+          onClick={onDismiss}
+          type="button"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function sessionStatusStyle(status: SessionStatus) {
   if (status === "approved") {
     return "border-supabase-border bg-supabase-50 text-supabase-800";
@@ -103,6 +158,16 @@ function SessionEditor({
   onSave: (session: PracticeSession) => void;
 }) {
   const [draft, setDraft] = useState(session);
+  const [minutesInput, setMinutesInput] = useState(String(session.minutes));
+  const parsedMinutes = parsePositiveIntegerInput(minutesInput);
+
+  const saveDraft = () => {
+    if (!parsedMinutes) {
+      return;
+    }
+
+    onSave({ ...draft, minutes: parsedMinutes });
+  };
 
   return (
     <div className="fixed inset-0 z-20 overflow-auto bg-stone-950/40 p-4">
@@ -132,12 +197,13 @@ function SessionEditor({
             Minutes
             <input
               className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
+              aria-invalid={minutesInput.trim() !== "" && !parsedMinutes}
+              inputMode="numeric"
               min={1}
-              onChange={(event) =>
-                setDraft({ ...draft, minutes: Math.max(1, Number(event.target.value)) })
-              }
+              onChange={(event) => setMinutesInput(event.target.value)}
+              step={1}
               type="number"
-              value={draft.minutes}
+              value={minutesInput}
             />
           </label>
 
@@ -285,8 +351,12 @@ function SessionEditor({
             Cancel
           </button>
           <button
-            className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 font-black text-white"
-            onClick={() => onSave(draft)}
+            className={classNames(
+              "flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 font-black text-white",
+              !parsedMinutes && "cursor-not-allowed opacity-50",
+            )}
+            disabled={!parsedMinutes}
+            onClick={saveDraft}
             type="button"
           >
             <Save className="h-4 w-4" />
@@ -423,9 +493,16 @@ function PlayerSettingsCard({
           <input
             className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
             min={1}
-            onBlur={(event) =>
-              onUpdate({ ...player, weekly_goal_minutes: Math.max(1, Number(event.target.value)) })
-            }
+            onBlur={(event) => {
+              const weeklyGoal = parsePositiveIntegerInput(event.target.value);
+
+              if (!weeklyGoal) {
+                event.target.value = String(player.weekly_goal_minutes);
+                return;
+              }
+
+              onUpdate({ ...player, weekly_goal_minutes: weeklyGoal });
+            }}
             type="number"
             defaultValue={player.weekly_goal_minutes}
           />
@@ -435,9 +512,16 @@ function PlayerSettingsCard({
           <input
             className="min-h-11 rounded-md border border-stone-200 px-3 text-base font-bold text-stone-950"
             min={1}
-            onBlur={(event) =>
-              onUpdate({ ...player, summer_goal_minutes: Math.max(1, Number(event.target.value)) })
-            }
+            onBlur={(event) => {
+              const summerGoal = parsePositiveIntegerInput(event.target.value);
+
+              if (!summerGoal) {
+                event.target.value = String(player.summer_goal_minutes);
+                return;
+              }
+
+              onUpdate({ ...player, summer_goal_minutes: summerGoal });
+            }}
             type="number"
             defaultValue={player.summer_goal_minutes}
           />
@@ -598,16 +682,24 @@ export function ParentApp() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitations, setInvitations] = useState<AppInvitation[]>([]);
   const [inviting, setInviting] = useState(false);
+  const [canManageInvitations, setCanManageInvitations] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    Promise.all([loadAppData(), loadInvitationsRemote()])
-      .then(([loaded, loadedInvitations]) => {
+    Promise.all([
+      loadAppData(),
+      canManageInvitationsRemote().catch(() => false),
+    ])
+      .then(async ([loaded, canManage]) => {
+        const loadedInvitations = canManage ? await loadInvitationsRemote() : [];
+
         if (mounted) {
           setResult(loaded);
+          setCanManageInvitations(canManage);
           setInvitations(loadedInvitations);
         }
       })
@@ -622,6 +714,16 @@ export function ParentApp() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setToast(null), 3200);
+
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
   const data = result?.data;
   const mode = result?.mode ?? "local";
   const today = getAppDateKey();
@@ -633,6 +735,7 @@ export function ParentApp() {
     () => (data ? [...data.sessions].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 12) : []),
     [data],
   );
+  const openInvitationCount = invitations.filter((invitation) => !invitation.accepted_at).length;
 
   const updateData = (nextData: AppData) => {
     if (!result) {
@@ -983,19 +1086,23 @@ export function ParentApp() {
       return;
     }
 
+    if (!canManageInvitations) {
+      setToast({ message: "Only the tracker admin can create invitations.", tone: "error" });
+      return;
+    }
+
     setInviting(true);
 
     try {
       const invitation = await createInvitationRemote(normalizedEmail);
       setInvitations((current) => [invitation, ...current]);
       setInviteEmail("");
-      setNotice("Private invitation link created. Copy it and send it to the parent.");
+      setToast({ message: "Invitation created. Copy the link when you are ready.", tone: "success" });
     } catch (caught) {
-      setNotice(
-        caught instanceof Error
-          ? caught.message
-          : "Could not create the invitation.",
-      );
+      setToast({
+        message: caught instanceof Error ? caught.message : "Could not create the invitation.",
+        tone: "error",
+      });
     } finally {
       setInviting(false);
     }
@@ -1007,9 +1114,12 @@ export function ParentApp() {
 
     try {
       await navigator.clipboard.writeText(inviteUrl.toString());
-      setNotice(`Invitation link copied for ${invitation.email}.`);
+      setToast({ message: `Invitation link copied for ${invitation.email}.`, tone: "success" });
     } catch {
-      setNotice(`Could not copy the link. Open ${inviteUrl.toString()} to share it.`);
+      setToast({
+        message: `Could not copy. Open ${inviteUrl.toString()} to share it.`,
+        tone: "error",
+      });
     }
   };
 
@@ -1019,11 +1129,12 @@ export function ParentApp() {
       setInvitations((current) =>
         current.filter((candidate) => candidate.id !== invitation.id),
       );
-      setNotice("Invitation removed.");
+      setToast({ message: "Invitation removed.", tone: "success" });
     } catch (caught) {
-      setNotice(
-        caught instanceof Error ? caught.message : "Could not remove the invitation.",
-      );
+      setToast({
+        message: caught instanceof Error ? caught.message : "Could not remove the invitation.",
+        tone: "error",
+      });
     }
   };
 
@@ -1052,8 +1163,11 @@ export function ParentApp() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-6xl px-4 py-4 sm:px-6">
+      <Toast onDismiss={() => setToast(null)} toast={toast} />
+
       {editingSession ? (
         <SessionEditor
+          key={editingSession.id}
           onCancel={() => setEditingSession(null)}
           onSave={(session) => void saveSessionChange(session)}
           session={editingSession}
@@ -1119,77 +1233,6 @@ export function ParentApp() {
           <p className="text-sm font-black uppercase tracking-wide text-stone-500">Sessions</p>
           <p className="mt-2 text-4xl font-black text-stone-950">{data.sessions.length}</p>
         </div>
-      </section>
-
-      <section className="mb-6 rounded-lg border border-supabase-border bg-supabase-50 p-4 shadow-sm">
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <h2 className="text-2xl font-black text-stone-950">Invite a family</h2>
-            <p className="mt-1 font-bold text-stone-600">
-              Create a private link for another parent. They get their own separate family workspace.
-            </p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-[minmax(15rem,1fr)_auto]">
-            <label>
-              <span className="sr-only">Parent email</span>
-              <input
-                aria-label="Parent email"
-                className="min-h-11 w-full rounded-md border border-stone-200 bg-white px-3 font-bold text-stone-950"
-                onChange={(event) => setInviteEmail(event.target.value)}
-                placeholder="parent@example.com"
-                type="email"
-                value={inviteEmail}
-              />
-            </label>
-            <button
-              className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={inviting || !inviteEmail.trim()}
-              onClick={() => void createInvitation()}
-              type="button"
-            >
-              <Plus className="h-4 w-4" />
-              {inviting ? "Creating" : "Create invite"}
-            </button>
-          </div>
-        </div>
-        <p className="mt-3 text-sm font-bold text-supabase-900">
-          Share the copied link by text or email. Existing Summer Rewards users sign in with their same account; new users can create one from the link.
-        </p>
-        {invitations.length > 0 ? (
-          <div className="mt-4 grid gap-2">
-            {invitations.map((invitation) => (
-              <article
-                className="grid gap-3 rounded-md border border-supabase-border bg-white p-3 sm:grid-cols-[1fr_auto]"
-                key={invitation.id}
-              >
-                <div>
-                  <p className="font-black text-stone-950">{invitation.email}</p>
-                  <p className="mt-1 text-sm font-bold text-stone-500">
-                    {invitation.accepted_at ? "Joined tracker" : "Waiting to join"}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="flex min-h-10 items-center gap-2 rounded-md border border-stone-200 px-3 text-sm font-black text-stone-700"
-                    onClick={() => void copyInvitation(invitation)}
-                    type="button"
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copy link
-                  </button>
-                  <button
-                    aria-label={`Remove invitation for ${invitation.email}`}
-                    className="flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 text-rose-700"
-                    onClick={() => void deleteInvitation(invitation)}
-                    type="button"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : null}
       </section>
 
       <section className="mb-6">
@@ -1318,6 +1361,81 @@ export function ParentApp() {
           })}
         </div>
       </section>
+
+      {canManageInvitations ? (
+        <section className="mb-6 border-t border-stone-200 pt-4">
+          <details>
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-md px-1 py-2 focus:outline-none focus:ring-4 focus:ring-supabase-100">
+              <span className="flex items-center gap-2 font-black text-stone-950">
+                <UserPlus className="h-5 w-5 text-stone-500" />
+                Parent invitations
+              </span>
+              <span className="rounded-full border border-stone-200 bg-white px-2 py-1 text-xs font-black uppercase tracking-wide text-stone-500">
+                {openInvitationCount} open
+              </span>
+            </summary>
+            <div className="mt-3 grid gap-3">
+              <div className="grid gap-2 sm:grid-cols-[minmax(15rem,1fr)_auto]">
+                <label>
+                  <span className="sr-only">Parent email</span>
+                  <input
+                    aria-label="Parent email"
+                    className="min-h-11 w-full rounded-md border border-stone-200 bg-white px-3 font-bold text-stone-950"
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    placeholder="parent@example.com"
+                    type="email"
+                    value={inviteEmail}
+                  />
+                </label>
+                <button
+                  className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={inviting || !inviteEmail.trim()}
+                  onClick={() => void createInvitation()}
+                  type="button"
+                >
+                  <Plus className="h-4 w-4" />
+                  {inviting ? "Creating" : "Create invite"}
+                </button>
+              </div>
+              {invitations.length > 0 ? (
+                <div className="grid gap-2">
+                  {invitations.map((invitation) => (
+                    <article
+                      className="grid gap-3 rounded-md border border-stone-200 bg-white p-3 sm:grid-cols-[1fr_auto]"
+                      key={invitation.id}
+                    >
+                      <div>
+                        <p className="font-black text-stone-950">{invitation.email}</p>
+                        <p className="mt-1 text-sm font-bold text-stone-500">
+                          {invitation.accepted_at ? "Joined tracker" : "Waiting to join"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          className="flex min-h-10 items-center gap-2 rounded-md border border-stone-200 px-3 text-sm font-black text-stone-700"
+                          onClick={() => void copyInvitation(invitation)}
+                          type="button"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copy link
+                        </button>
+                        <button
+                          aria-label={`Remove invitation for ${invitation.email}`}
+                          className="flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 text-rose-700"
+                          onClick={() => void deleteInvitation(invitation)}
+                          type="button"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </details>
+        </section>
+      ) : null}
 
       <section className="mb-6">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

@@ -13,6 +13,7 @@ The migration files are:
 - `supabase/migrations/20260604152546_add_multi_sport_support.sql`
 - `supabase/migrations/20260604201735_invite_only_tracker_access.sql`
 - `supabase/migrations/20260604203614_replace_starter_sports_with_hockey.sql`
+- `supabase/migrations/20260605111942_restrict_tracker_invitations_to_admin.sql`
 
 The migrations create the original practice schema, add Supabase Auth family scoping and RLS, and then add a backward-compatible multi-sport catalog, child-to-sport assignments, starter plans, and generic season badges.
 
@@ -38,7 +39,8 @@ Supabase Auth:
   want training-app to be the project's default redirect.
 - Add both apps' production URLs to the Auth redirect allowlist. For the
   training app, add:
-  - `https://softballtracker.vercel.app/**`
+  - `https://training.vercel.app/**`
+  - `https://softballtracker.vercel.app/**` if the old domain remains active
   - `https://*-joe-lairds-projects.vercel.app/**`
   - `http://localhost:3000/**`
 - Each app must pass its own `redirectTo`/`emailRedirectTo` URL when starting

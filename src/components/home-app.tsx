@@ -18,6 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { FEELINGS, MINUTE_PRESETS } from "@/lib/config";
+import { parsePositiveIntegerInput } from "@/lib/input";
 import {
   createPracticeSessionFromInput,
   loadAppData,
@@ -403,6 +404,7 @@ function QuickLogFlow({
   const [sportId, setSportId] = useState<string | null>(null);
   const [practiceType, setPracticeType] = useState<string | null>(null);
   const [minutes, setMinutes] = useState<number | null>(null);
+  const [customMinutesInput, setCustomMinutesInput] = useState("");
   const [drills, setDrills] = useState<Array<{ label: string; completed: boolean }>>([]);
   const [feeling, setFeeling] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -416,6 +418,7 @@ function QuickLogFlow({
   );
   const selectedSport = sports.find((sport) => sport.id === sportId) ?? null;
   const availableTemplates = templates.filter((template) => template.sport_id === sportId);
+  const customMinutes = parsePositiveIntegerInput(customMinutesInput);
 
   const selectSport = (sport: Sport) => {
     setSportId(sport.id);
@@ -450,6 +453,17 @@ function QuickLogFlow({
       session_date: sessionDate,
       require_parent_approval: approvalRequired,
     });
+  };
+
+  const continueWithCustomMinutes = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!customMinutes) {
+      return;
+    }
+
+    setMinutes(customMinutes);
+    setStep("drills");
   };
 
   return (
@@ -554,6 +568,34 @@ function QuickLogFlow({
               </button>
             ))}
           </div>
+          <form
+            className="mt-4 rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+            onSubmit={continueWithCustomMinutes}
+          >
+            <label className="grid gap-2">
+              <span className="text-xl font-black text-stone-950">Custom minutes</span>
+              <span className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input
+                  aria-invalid={customMinutesInput.trim() !== "" && !customMinutes}
+                  className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                  inputMode="numeric"
+                  min={1}
+                  onChange={(event) => setCustomMinutesInput(event.target.value)}
+                  placeholder="80"
+                  step={1}
+                  type="number"
+                  value={customMinutesInput}
+                />
+                <button
+                  className="flex min-h-12 items-center justify-center rounded-lg border border-supabase-border bg-supabase px-5 font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!customMinutes}
+                  type="submit"
+                >
+                  Continue
+                </button>
+              </span>
+            </label>
+          </form>
         </section>
       ) : null}
 

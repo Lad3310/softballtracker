@@ -4,6 +4,18 @@ export const WEEK_START_DAY = 1;
 
 export const MINUTE_PRESETS = [5, 10, 15, 20, 30, 45, 60] as const;
 
+export const APP_ADMIN_EMAILS = ["joe.laird1@outlook.com"] as const;
+
+export function isAppAdminEmail(email: string | null | undefined) {
+  if (!email) {
+    return false;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  return APP_ADMIN_EMAILS.some((adminEmail) => adminEmail === normalizedEmail);
+}
+
 export const FEELINGS = ["Great", "Good", "Hard", "Frustrating"] as const;
 
 export const FOCUS_TAGS = [

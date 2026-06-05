@@ -1,4 +1,9 @@
 import { SUMMER_MILESTONE_BADGE_CODES } from "@/lib/config";
+import {
+  readBrowserStorage,
+  removeBrowserStorage,
+  writeBrowserStorage,
+} from "@/lib/browser-storage";
 import { createId, getAppDateKey, nowIso } from "@/lib/time";
 import type {
   AppData,
@@ -117,10 +122,6 @@ const BADGE_SEEDS = [
   ["summer_goal_complete", "Season Goal Complete", "Reached 100% of the season goal.", "100"],
 ] as const;
 
-function canUseStorage() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-}
-
 export function createSeedData(): AppData {
   const today = getAppDateKey();
   const year = today.slice(0, 4);
@@ -216,11 +217,7 @@ export function loadLocalData() {
 }
 
 export function loadStoredLocalData() {
-  if (!canUseStorage()) {
-    return null;
-  }
-
-  const raw = window.localStorage.getItem(LOCAL_DATA_KEY);
+  const raw = readBrowserStorage(LOCAL_DATA_KEY);
 
   if (!raw) {
     return null;
@@ -276,25 +273,17 @@ export function loadStoredLocalData() {
 }
 
 export function saveLocalData(data: AppData) {
-  if (canUseStorage()) {
-    window.localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(data));
-  }
+  writeBrowserStorage(LOCAL_DATA_KEY, JSON.stringify(data));
 }
 
 export function clearLocalData() {
-  if (canUseStorage()) {
-    window.localStorage.removeItem(LOCAL_DATA_KEY);
-  }
+  removeBrowserStorage(LOCAL_DATA_KEY);
 }
 
 export function loadQueuedSessions() {
-  if (!canUseStorage()) {
-    return [] as PracticeSession[];
-  }
-
   try {
     return (
-      JSON.parse(window.localStorage.getItem(QUEUED_SESSIONS_KEY) ?? "[]") as PracticeSession[]
+      JSON.parse(readBrowserStorage(QUEUED_SESSIONS_KEY) ?? "[]") as PracticeSession[]
     ).map((session) => ({ ...session, sport_id: session.sport_id ?? SOFTBALL_SPORT_ID }));
   } catch {
     return [];
@@ -302,12 +291,10 @@ export function loadQueuedSessions() {
 }
 
 export function saveQueuedSessions(sessions: PracticeSession[]) {
-  if (canUseStorage()) {
-    window.localStorage.setItem(
-      QUEUED_SESSIONS_KEY,
-      JSON.stringify(sessions.filter((session) => session.sync_state !== "synced")),
-    );
-  }
+  writeBrowserStorage(
+    QUEUED_SESSIONS_KEY,
+    JSON.stringify(sessions.filter((session) => session.sync_state !== "synced")),
+  );
 }
 
 export function clearSyncedQueuedSession(sessionId: string) {

@@ -19,6 +19,21 @@ type AccessStatus = "checking" | "allowed" | "denied";
 
 const NEW_ACCOUNT_PASSWORD_MIN_LENGTH = 6;
 
+function isBrowserSecurityError(error: unknown) {
+  const name = error instanceof DOMException ? error.name : "";
+  const message = error instanceof Error ? error.message : String(error);
+
+  return name === "SecurityError" || /operation is insecure|security/i.test(message);
+}
+
+function signInErrorMessage(error: unknown) {
+  if (isBrowserSecurityError(error)) {
+    return "This browser is blocking secure sign-in storage. Open the HTTPS app link in a normal browser window and allow cookies/site data for this site.";
+  }
+
+  return error instanceof Error ? error.message : "Sign-in failed.";
+}
+
 function getAuthRedirectUrl() {
   const redirectUrl = new URL("/", window.location.origin);
   const inviteToken = new URLSearchParams(window.location.search).get("invite");
@@ -118,17 +133,27 @@ export function AuthGate({
       setLoading(false);
     };
 
-    supabase.auth.getSession().then(({ data, error: sessionError }) => {
-      if (!mounted) {
-        return;
-      }
+    supabase.auth
+      .getSession()
+      .then(({ data, error: sessionError }) => {
+        if (!mounted) {
+          return;
+        }
 
-      if (sessionError) {
-        setError(sessionError.message);
-      }
+        if (sessionError) {
+          setError(signInErrorMessage(sessionError));
+        }
 
-      void applyUser(data.session?.user ?? null);
-    });
+        void applyUser(data.session?.user ?? null);
+      })
+      .catch((sessionError: unknown) => {
+        if (!mounted) {
+          return;
+        }
+
+        setError(signInErrorMessage(sessionError));
+        setLoading(false);
+      });
 
     const {
       data: { subscription },
@@ -171,18 +196,25 @@ export function AuthGate({
     setSubmitting(true);
     clearFeedback();
 
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: getAuthRedirectUrl(),
-        shouldCreateUser: false,
-      },
-    });
+    let signInError: unknown = null;
+
+    try {
+      const result = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+          shouldCreateUser: false,
+        },
+      });
+      signInError = result.error;
+    } catch (caught) {
+      signInError = caught;
+    }
 
     setSubmitting(false);
 
     if (signInError) {
-      setError(signInError.message);
+      setError(signInErrorMessage(signInError));
       return;
     }
 
@@ -208,40 +240,53 @@ export function AuthGate({
     setSubmitting(true);
 
     if (passwordAction === "sign-in") {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      let signInError: unknown = null;
+
+      try {
+        const result = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        signInError = result.error;
+      } catch (caught) {
+        signInError = caught;
+      }
 
       setSubmitting(false);
 
       if (signInError) {
-        setError(signInError.message);
+        setError(signInErrorMessage(signInError));
       }
 
       return;
     }
 
-    const {
-      data,
-      error: signUpError,
-    } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl(),
-      },
-    });
+    let signedUpUser: User | null = null;
+    let signUpError: unknown = null;
+
+    try {
+      const result = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+        },
+      });
+      signedUpUser = result.data.session?.user ?? null;
+      signUpError = result.error;
+    } catch (caught) {
+      signUpError = caught;
+    }
 
     setSubmitting(false);
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(signInErrorMessage(signUpError));
       return;
     }
 
-    if (data.session) {
-      setUser(data.session.user);
+    if (signedUpUser) {
+      setUser(signedUpUser);
       return;
     }
 

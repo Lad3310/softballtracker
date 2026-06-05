@@ -1,6 +1,7 @@
 "use client";
 
 import { recomputePlayerBadges } from "@/lib/badges";
+import { isAppAdminEmail } from "@/lib/config";
 import {
   clearLocalData,
   clearSyncedQueuedSession,
@@ -69,6 +70,25 @@ export async function loadInvitationsRemote() {
   return (result.data ?? []) as AppInvitation[];
 }
 
+export async function canManageInvitationsRemote() {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return false;
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    throw error;
+  }
+
+  return isAppAdminEmail(user?.email);
+}
+
 export async function createInvitationRemote(email: string) {
   const supabase = getSupabaseBrowserClient();
 
@@ -87,6 +107,10 @@ export async function createInvitationRemote(email: string) {
 
   if (!user) {
     throw new Error("Please sign in before creating an invitation.");
+  }
+
+  if (!isAppAdminEmail(user.email)) {
+    throw new Error("Only the tracker admin can create invitations.");
   }
 
   const result = await supabase
@@ -110,6 +134,19 @@ export async function deleteInvitationRemote(invitationId: string) {
 
   if (!supabase) {
     return;
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    throw userError;
+  }
+
+  if (!isAppAdminEmail(user?.email)) {
+    throw new Error("Only the tracker admin can remove invitations.");
   }
 
   const result = await supabase
