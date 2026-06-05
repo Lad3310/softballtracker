@@ -39,8 +39,7 @@ Supabase Auth:
   want training-app to be the project's default redirect.
 - Add both apps' production URLs to the Auth redirect allowlist. For the
   training app, add:
-  - `https://training.vercel.app/**`
-  - `https://softballtracker.vercel.app/**` if the old domain remains active
+  - `https://softballtracker.vercel.app/**`
   - `https://*-joe-lairds-projects.vercel.app/**`
   - `http://localhost:3000/**`
 - Each app must pass its own `redirectTo`/`emailRedirectTo` URL when starting
