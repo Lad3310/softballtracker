@@ -302,7 +302,10 @@ async function importStoredLocalData(supabase: Supabase, familyId: string) {
     sport_id: SOFTBALL_SPORT_ID,
     created_at: nowIso(),
   }));
-  const playerSportsInsert = await supabase.from(TABLES.playerSports).upsert(playerSports);
+  const playerSportsInsert = await supabase.from(TABLES.playerSports).upsert(playerSports, {
+    onConflict: "player_id,sport_id",
+    ignoreDuplicates: true,
+  });
 
   if (playerSportsInsert.error) {
     throw playerSportsInsert.error;

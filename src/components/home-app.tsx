@@ -55,6 +55,22 @@ function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
 function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" | "blue" }) {
   return (
     <div className="h-4 w-full overflow-hidden rounded-full bg-stone-200">
@@ -772,7 +788,7 @@ export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen }
       })
       .catch((caught: unknown) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Could not load practice data.");
+          setError(getErrorMessage(caught, "Could not load practice data."));
         }
       });
 
