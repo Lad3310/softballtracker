@@ -9,15 +9,14 @@ import {
   Mail,
   ShieldCheck,
   Sparkles,
-  UserPlus,
 } from "lucide-react";
 import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/lib/supabase";
+import { APP_ADMIN_EMAILS, isAppAdminEmail } from "@/lib/config";
 
 type AuthMethod = "email-link" | "password";
-type PasswordAction = "sign-in" | "sign-up";
 type AccessStatus = "checking" | "allowed" | "denied";
 
-const NEW_ACCOUNT_PASSWORD_MIN_LENGTH = 6;
+const TRACKER_LOGIN_EMAIL = APP_ADMIN_EMAILS[0];
 
 function isBrowserSecurityError(error: unknown) {
   const name = error instanceof DOMException ? error.name : "";
@@ -35,14 +34,7 @@ function signInErrorMessage(error: unknown) {
 }
 
 function getAuthRedirectUrl() {
-  const redirectUrl = new URL("/", window.location.origin);
-  const inviteToken = new URLSearchParams(window.location.search).get("invite");
-
-  if (inviteToken) {
-    redirectUrl.searchParams.set("invite", inviteToken);
-  }
-
-  return redirectUrl.toString();
+  return new URL("/", window.location.origin).toString();
 }
 
 export function AuthGate({
@@ -53,29 +45,15 @@ export function AuthGate({
   showAccountBar?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState<string>(TRACKER_LOGIN_EMAIL);
   const [password, setPassword] = useState("");
-  const [passwordConfirmation, setPasswordConfirmation] = useState("");
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("email-link");
-  const [passwordAction, setPasswordAction] =
-    useState<PasswordAction>("sign-in");
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("password");
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
-  const [hasInviteLink, setHasInviteLink] = useState(false);
   const [loading, setLoading] = useState(hasSupabaseConfig());
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supabase = getSupabaseBrowserClient();
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setHasInviteLink(
-        Boolean(new URLSearchParams(window.location.search).get("invite")),
-      );
-    }, 0);
-
-    return () => window.clearTimeout(timeout);
-  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -100,36 +78,13 @@ export function AuthGate({
       setUser(activeUser);
       setAccessStatus("checking");
 
-      const normalizedEmail = activeUser.email?.trim().toLowerCase() ?? "";
-      const [membership, invitation] = await Promise.all([
-        supabase
-          .from("softball_family_members")
-          .select("id")
-          .eq("user_id", activeUser.id)
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("softball_app_invitations")
-          .select("id")
-          .eq("email", normalizedEmail)
-          .limit(1)
-          .maybeSingle(),
-      ]);
-
-      if (!mounted) {
-        return;
-      }
-
-      const accessError = membership.error ?? invitation.error;
-
-      if (accessError) {
-        setError(accessError.message);
+      if (!isAppAdminEmail(activeUser.email)) {
         setAccessStatus("denied");
         setLoading(false);
         return;
       }
 
-      setAccessStatus(membership.data || invitation.data ? "allowed" : "denied");
+      setAccessStatus("allowed");
       setLoading(false);
     };
 
@@ -184,17 +139,26 @@ export function AuthGate({
     clearFeedback();
   };
 
-  const choosePasswordAction = (action: PasswordAction) => {
-    setPasswordAction(action);
-    clearFeedback();
+  const validateTrackerEmail = () => {
+    if (isAppAdminEmail(email)) {
+      return true;
+    }
+
+    setError(`This tracker only accepts ${TRACKER_LOGIN_EMAIL}.`);
+    return false;
   };
 
   const signInWithEmailLink = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
-    setSubmitting(true);
     clearFeedback();
+
+    if (!validateTrackerEmail()) {
+      return;
+    }
+
+    setSubmitting(true);
 
     let signInError: unknown = null;
 
@@ -227,72 +191,29 @@ export function AuthGate({
     event.preventDefault();
     clearFeedback();
 
-    if (passwordAction === "sign-up" && password !== passwordConfirmation) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    if (passwordAction === "sign-up" && !hasInviteLink) {
-      setError("A private tracker invitation link is required to create an account.");
+    if (!validateTrackerEmail()) {
       return;
     }
 
     setSubmitting(true);
 
-    if (passwordAction === "sign-in") {
-      let signInError: unknown = null;
-
-      try {
-        const result = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        signInError = result.error;
-      } catch (caught) {
-        signInError = caught;
-      }
-
-      setSubmitting(false);
-
-      if (signInError) {
-        setError(signInErrorMessage(signInError));
-      }
-
-      return;
-    }
-
-    let signedUpUser: User | null = null;
-    let signUpError: unknown = null;
+    let signInError: unknown = null;
 
     try {
-      const result = await supabase.auth.signUp({
+      const result = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
-        options: {
-          emailRedirectTo: getAuthRedirectUrl(),
-        },
       });
-      signedUpUser = result.data.session?.user ?? null;
-      signUpError = result.error;
+      signInError = result.error;
     } catch (caught) {
-      signUpError = caught;
+      signInError = caught;
     }
 
     setSubmitting(false);
 
-    if (signUpError) {
-      setError(signInErrorMessage(signUpError));
-      return;
+    if (signInError) {
+      setError(signInErrorMessage(signInError));
     }
-
-    if (signedUpUser) {
-      setUser(signedUpUser);
-      return;
-    }
-
-    setMessage(
-      "Signup request received. Check your email if this address is new. If it already has a Supabase account, choose Sign in instead.",
-    );
   };
 
   const signOut = async () => {
@@ -307,7 +228,7 @@ export function AuthGate({
         <section className="rounded-lg border border-stone-200 bg-white p-6 text-center shadow-sm">
           <Sparkles className="mx-auto h-10 w-10 animate-pulse text-supabase-700" />
           <p className="mt-3 text-xl font-black text-stone-950">
-            Checking parent invitation.
+            Checking tracker access.
           </p>
         </section>
       </main>
@@ -331,26 +252,13 @@ export function AuthGate({
           </div>
 
           <p className="mt-5 text-sm font-bold text-stone-600">
-            Choose a one-time email link or use an email and password.
+            Sign in with the saved family email and password.
           </p>
 
           <div
             aria-label="Sign-in method"
             className="mt-3 grid grid-cols-2 rounded-lg bg-stone-100 p-1"
           >
-            <button
-              aria-pressed={authMethod === "email-link"}
-              className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-black transition ${
-                authMethod === "email-link"
-                  ? "bg-white text-stone-950 shadow-sm"
-                  : "text-stone-500 hover:text-stone-800"
-              }`}
-              onClick={() => chooseAuthMethod("email-link")}
-              type="button"
-            >
-              <Mail className="h-4 w-4" />
-              Email link
-            </button>
             <button
               aria-pressed={authMethod === "password"}
               className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-black transition ${
@@ -364,40 +272,20 @@ export function AuthGate({
               <KeyRound className="h-4 w-4" />
               Password
             </button>
-          </div>
-
-          {authMethod === "password" ? (
-            <div
-              aria-label="Password account action"
-              className="mt-4 grid grid-cols-2 gap-2"
+            <button
+              aria-pressed={authMethod === "email-link"}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-black transition ${
+                authMethod === "email-link"
+                  ? "bg-white text-stone-950 shadow-sm"
+                  : "text-stone-500 hover:text-stone-800"
+              }`}
+              onClick={() => chooseAuthMethod("email-link")}
+              type="button"
             >
-              <button
-                aria-pressed={passwordAction === "sign-in"}
-                className={`min-h-10 rounded-md border px-3 text-sm font-black transition ${
-                  passwordAction === "sign-in"
-                    ? "border-supabase-border bg-supabase-50 text-supabase-900"
-                    : "border-stone-200 text-stone-500 hover:text-stone-800"
-                }`}
-                onClick={() => choosePasswordAction("sign-in")}
-                type="button"
-              >
-                Sign in
-              </button>
-              <button
-                aria-pressed={passwordAction === "sign-up"}
-                className={`min-h-10 rounded-md border px-3 text-sm font-black transition ${
-                  passwordAction === "sign-up"
-                    ? "border-supabase-border bg-supabase-50 text-supabase-900"
-                    : "border-stone-200 text-stone-500 hover:text-stone-800"
-                }`}
-                disabled={!hasInviteLink}
-                onClick={() => choosePasswordAction("sign-up")}
-                type="button"
-              >
-                {hasInviteLink ? "Create account" : "Invite required"}
-              </button>
-            </div>
-          ) : null}
+              <Mail className="h-4 w-4" />
+              Email link
+            </button>
+          </div>
 
           <form
             className="mt-4 grid gap-3"
@@ -410,10 +298,12 @@ export function AuthGate({
             <label className="grid gap-2 text-sm font-black text-stone-600">
               Email
               <input
-                autoComplete="email"
+                autoCapitalize="none"
+                autoComplete="username"
                 className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                name="email"
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="parent@example.com"
+                placeholder={TRACKER_LOGIN_EMAIL}
                 required
                 type="email"
                 value={email}
@@ -423,37 +313,13 @@ export function AuthGate({
               <label className="grid gap-2 text-sm font-black text-stone-600">
                 Password
                 <input
-                  autoComplete={
-                    passwordAction === "sign-up"
-                      ? "new-password"
-                      : "current-password"
-                  }
+                  autoComplete="current-password"
                   className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
-                  minLength={
-                    passwordAction === "sign-up"
-                      ? NEW_ACCOUNT_PASSWORD_MIN_LENGTH
-                      : undefined
-                  }
+                  name="password"
                   onChange={(event) => setPassword(event.target.value)}
                   required
                   type="password"
                   value={password}
-                />
-              </label>
-            ) : null}
-            {authMethod === "password" && passwordAction === "sign-up" ? (
-              <label className="grid gap-2 text-sm font-black text-stone-600">
-                Confirm password
-                <input
-                  autoComplete="new-password"
-                  className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
-                  minLength={NEW_ACCOUNT_PASSWORD_MIN_LENGTH}
-                  onChange={(event) =>
-                    setPasswordConfirmation(event.target.value)
-                  }
-                  required
-                  type="password"
-                  value={passwordConfirmation}
                 />
               </label>
             ) : null}
@@ -464,31 +330,24 @@ export function AuthGate({
             >
               {authMethod === "email-link" ? (
                 <Mail className="h-5 w-5" />
-              ) : passwordAction === "sign-up" ? (
-                <UserPlus className="h-5 w-5" />
               ) : (
                 <KeyRound className="h-5 w-5" />
               )}
               {submitting
                 ? authMethod === "email-link"
                   ? "Sending link"
-                  : passwordAction === "sign-up"
-                    ? "Creating account"
-                    : "Signing in"
+                  : "Signing in"
                 : authMethod === "email-link"
                   ? "Send sign-in link"
-                  : passwordAction === "sign-up"
-                    ? "Create account"
-                    : "Sign in"}
+                  : "Sign in"}
             </button>
           </form>
 
           {message ? <p className="mt-4 font-bold text-supabase-800">{message}</p> : null}
           {error ? <p className="mt-4 font-bold text-rose-700">{error}</p> : null}
           <p className="mt-5 text-sm font-medium text-stone-500">
-            Email links only work for existing accounts. New families can
-            create an account from a private tracker invitation link. Kids
-            still use athlete cards after a parent signs in on this device.
+            This tracker currently only accepts {TRACKER_LOGIN_EMAIL}. Kids can
+            use the athlete cards after a parent signs in on this device.
           </p>
         </section>
       </main>
@@ -501,14 +360,14 @@ export function AuthGate({
         <section className="rounded-lg border border-amber-300 bg-white p-5 text-center shadow-sm">
           <ShieldCheck className="mx-auto h-12 w-12 text-amber-600" />
           <p className="mt-4 text-sm font-black uppercase tracking-wide text-amber-700">
-            Invitation only
+            Private tracker
           </p>
           <h1 className="mt-1 text-3xl font-black text-stone-950">
-            This account needs a tracker invite
+            Use the family tracker email
           </h1>
           <p className="mt-3 font-bold text-stone-600">
-            Ask a current practice-tracker parent to invite {user.email}.
-            Your shared Supabase account still works normally in other apps.
+            This app currently only opens for {TRACKER_LOGIN_EMAIL}. Sign out
+            and use that saved account on this device.
           </p>
           <button
             className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-stone-200 px-4 font-black text-stone-700"

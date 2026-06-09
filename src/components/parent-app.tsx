@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Check,
   ClipboardList,
-  Copy,
   Edit3,
   Frown,
   Medal,
@@ -14,20 +13,15 @@ import {
   Save,
   Settings,
   Trash2,
-  UserPlus,
   X,
 } from "lucide-react";
 import { FEELINGS, FOCUS_TAGS } from "@/lib/config";
 import { recomputePlayerBadges } from "@/lib/badges";
 import { parsePositiveIntegerInput } from "@/lib/input";
 import {
-  canManageInvitationsRemote,
   deletePlayerRemote,
-  deleteInvitationRemote,
   deleteSessionRemote,
-  createInvitationRemote,
   loadAppData,
-  loadInvitationsRemote,
   persistLocalState,
   recomputeBadgesForPlayer,
   replacePlayerSportsRemote,
@@ -43,7 +37,6 @@ import { getMaxStreak, getSummerProgress, getWeeklyProgress } from "@/lib/progre
 import type {
   AppData,
   AppDataResult,
-  AppInvitation,
   DrillTemplate,
   Handedness,
   HittingSide,
@@ -68,58 +61,6 @@ function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" 
         )}
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
-    </div>
-  );
-}
-
-type ToastMessage = {
-  message: string;
-  tone: "success" | "error";
-};
-
-function Toast({
-  toast,
-  onDismiss,
-}: {
-  toast: ToastMessage | null;
-  onDismiss: () => void;
-}) {
-  if (!toast) {
-    return null;
-  }
-
-  return (
-    <div
-      aria-live="polite"
-      className="fixed bottom-4 left-4 right-4 z-30 sm:left-auto sm:w-full sm:max-w-sm"
-      role="status"
-    >
-      <div
-        className={classNames(
-          "flex items-start gap-3 rounded-md border bg-white p-4 shadow-lg",
-          toast.tone === "success"
-            ? "border-supabase-border text-stone-950"
-            : "border-rose-200 text-rose-950",
-        )}
-      >
-        <span
-          className={classNames(
-            "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-            toast.tone === "success" ? "bg-supabase text-stone-950" : "bg-rose-100 text-rose-700",
-          )}
-        >
-          {toast.tone === "success" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-        </span>
-        <p className="flex-1 text-sm font-black">{toast.message}</p>
-        <button
-          aria-label="Dismiss notification"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-stone-200 text-stone-500"
-          onClick={onDismiss}
-          type="button"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
     </div>
   );
 }
@@ -679,28 +620,16 @@ export function ParentApp() {
   const [newSportName, setNewSportName] = useState("");
   const [newPlanName, setNewPlanName] = useState("");
   const [newPlanSportId, setNewPlanSportId] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [invitations, setInvitations] = useState<AppInvitation[]>([]);
-  const [inviting, setInviting] = useState(false);
-  const [canManageInvitations, setCanManageInvitations] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    Promise.all([
-      loadAppData(),
-      canManageInvitationsRemote().catch(() => false),
-    ])
-      .then(async ([loaded, canManage]) => {
-        const loadedInvitations = canManage ? await loadInvitationsRemote() : [];
-
+    loadAppData()
+      .then((loaded) => {
         if (mounted) {
           setResult(loaded);
-          setCanManageInvitations(canManage);
-          setInvitations(loadedInvitations);
         }
       })
       .catch((caught: unknown) => {
@@ -714,16 +643,6 @@ export function ParentApp() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!toast) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => setToast(null), 3200);
-
-    return () => window.clearTimeout(timeout);
-  }, [toast]);
-
   const data = result?.data;
   const mode = result?.mode ?? "local";
   const today = getAppDateKey();
@@ -735,7 +654,6 @@ export function ParentApp() {
     () => (data ? [...data.sessions].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 12) : []),
     [data],
   );
-  const openInvitationCount = invitations.filter((invitation) => !invitation.accepted_at).length;
 
   const updateData = (nextData: AppData) => {
     if (!result) {
@@ -1079,65 +997,6 @@ export function ParentApp() {
     }
   };
 
-  const createInvitation = async () => {
-    const normalizedEmail = inviteEmail.trim().toLowerCase();
-
-    if (!normalizedEmail) {
-      return;
-    }
-
-    if (!canManageInvitations) {
-      setToast({ message: "Only the tracker admin can create invitations.", tone: "error" });
-      return;
-    }
-
-    setInviting(true);
-
-    try {
-      const invitation = await createInvitationRemote(normalizedEmail);
-      setInvitations((current) => [invitation, ...current]);
-      setInviteEmail("");
-      setToast({ message: "Invitation created. Copy the link when you are ready.", tone: "success" });
-    } catch (caught) {
-      setToast({
-        message: caught instanceof Error ? caught.message : "Could not create the invitation.",
-        tone: "error",
-      });
-    } finally {
-      setInviting(false);
-    }
-  };
-
-  const copyInvitation = async (invitation: AppInvitation) => {
-    const inviteUrl = new URL("/", window.location.origin);
-    inviteUrl.searchParams.set("invite", invitation.token);
-
-    try {
-      await navigator.clipboard.writeText(inviteUrl.toString());
-      setToast({ message: `Invitation link copied for ${invitation.email}.`, tone: "success" });
-    } catch {
-      setToast({
-        message: `Could not copy. Open ${inviteUrl.toString()} to share it.`,
-        tone: "error",
-      });
-    }
-  };
-
-  const deleteInvitation = async (invitation: AppInvitation) => {
-    try {
-      await deleteInvitationRemote(invitation.id);
-      setInvitations((current) =>
-        current.filter((candidate) => candidate.id !== invitation.id),
-      );
-      setToast({ message: "Invitation removed.", tone: "success" });
-    } catch (caught) {
-      setToast({
-        message: caught instanceof Error ? caught.message : "Could not remove the invitation.",
-        tone: "error",
-      });
-    }
-  };
-
   if (error) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-4">
@@ -1163,8 +1022,6 @@ export function ParentApp() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-6xl px-4 py-4 sm:px-6">
-      <Toast onDismiss={() => setToast(null)} toast={toast} />
-
       {editingSession ? (
         <SessionEditor
           key={editingSession.id}
@@ -1361,81 +1218,6 @@ export function ParentApp() {
           })}
         </div>
       </section>
-
-      {canManageInvitations ? (
-        <section className="mb-6 border-t border-stone-200 pt-4">
-          <details>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-md px-1 py-2 focus:outline-none focus:ring-4 focus:ring-supabase-100">
-              <span className="flex items-center gap-2 font-black text-stone-950">
-                <UserPlus className="h-5 w-5 text-stone-500" />
-                Parent invitations
-              </span>
-              <span className="rounded-full border border-stone-200 bg-white px-2 py-1 text-xs font-black uppercase tracking-wide text-stone-500">
-                {openInvitationCount} open
-              </span>
-            </summary>
-            <div className="mt-3 grid gap-3">
-              <div className="grid gap-2 sm:grid-cols-[minmax(15rem,1fr)_auto]">
-                <label>
-                  <span className="sr-only">Parent email</span>
-                  <input
-                    aria-label="Parent email"
-                    className="min-h-11 w-full rounded-md border border-stone-200 bg-white px-3 font-bold text-stone-950"
-                    onChange={(event) => setInviteEmail(event.target.value)}
-                    placeholder="parent@example.com"
-                    type="email"
-                    value={inviteEmail}
-                  />
-                </label>
-                <button
-                  className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={inviting || !inviteEmail.trim()}
-                  onClick={() => void createInvitation()}
-                  type="button"
-                >
-                  <Plus className="h-4 w-4" />
-                  {inviting ? "Creating" : "Create invite"}
-                </button>
-              </div>
-              {invitations.length > 0 ? (
-                <div className="grid gap-2">
-                  {invitations.map((invitation) => (
-                    <article
-                      className="grid gap-3 rounded-md border border-stone-200 bg-white p-3 sm:grid-cols-[1fr_auto]"
-                      key={invitation.id}
-                    >
-                      <div>
-                        <p className="font-black text-stone-950">{invitation.email}</p>
-                        <p className="mt-1 text-sm font-bold text-stone-500">
-                          {invitation.accepted_at ? "Joined tracker" : "Waiting to join"}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          className="flex min-h-10 items-center gap-2 rounded-md border border-stone-200 px-3 text-sm font-black text-stone-700"
-                          onClick={() => void copyInvitation(invitation)}
-                          type="button"
-                        >
-                          <Copy className="h-4 w-4" />
-                          Copy link
-                        </button>
-                        <button
-                          aria-label={`Remove invitation for ${invitation.email}`}
-                          className="flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 text-rose-700"
-                          onClick={() => void deleteInvitation(invitation)}
-                          type="button"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </details>
-        </section>
-      ) : null}
 
       <section className="mb-6">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
