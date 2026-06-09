@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  BookOpen,
   CalendarDays,
   Check,
   ChevronRight,
@@ -17,6 +18,7 @@ import {
   Trophy,
   WifiOff,
 } from "lucide-react";
+import { HittingTrainingModule } from "@/components/hitting-training-module";
 import { FEELINGS, MINUTE_PRESETS } from "@/lib/config";
 import { parsePositiveIntegerInput } from "@/lib/input";
 import {
@@ -47,7 +49,7 @@ import type {
   Sport,
 } from "@/lib/types";
 
-type Screen = "picker" | "dashboard" | "log";
+type Screen = "picker" | "dashboard" | "log" | "lesson";
 
 function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -95,10 +97,12 @@ function StatusNote({
 function PlayerPicker({
   data,
   mode,
+  onOpenHitting,
   onPickPlayer,
 }: {
   data: AppData;
   mode: AppDataResult["mode"];
+  onOpenHitting: () => void;
   onPickPlayer: (playerId: string) => void;
 }) {
   const pendingCount = data.sessions.filter((session) => session.status === "pending").length;
@@ -114,13 +118,23 @@ function PlayerPicker({
             Pick your athlete
           </h1>
         </div>
-        <Link
-          className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-supabase-border bg-supabase px-4 text-base font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover focus:outline-none focus:ring-4 focus:ring-supabase-100"
-          href="/parent"
-        >
-          <LayoutDashboard className="h-5 w-5" />
-          Dashboard
-        </Link>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-4 text-base font-black text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
+            onClick={onOpenHitting}
+            type="button"
+          >
+            <BookOpen className="h-5 w-5" />
+            Hitting Guide
+          </button>
+          <Link
+            className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-supabase-border bg-supabase px-4 text-base font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover focus:outline-none focus:ring-4 focus:ring-supabase-100"
+            href="/parent"
+          >
+            <LayoutDashboard className="h-5 w-5" />
+            Dashboard
+          </Link>
+        </div>
       </header>
 
       <div className="mb-4">
@@ -261,6 +275,7 @@ function PlayerDashboard({
   player,
   message,
   onBack,
+  onOpenHitting,
   onLogPractice,
 }: {
   data: AppData;
@@ -268,6 +283,7 @@ function PlayerDashboard({
   player: Player;
   message: string | null;
   onBack: () => void;
+  onOpenHitting: () => void;
   onLogPractice: () => void;
 }) {
   const today = getAppDateKey();
@@ -371,14 +387,24 @@ function PlayerDashboard({
         <BadgeStrip data={data} player={player} />
       </section>
 
-      <button
-        className="mt-5 flex min-h-16 w-full items-center justify-center gap-3 rounded-lg bg-stone-950 px-5 text-xl font-black text-white shadow-sm transition hover:bg-stone-800 focus:outline-none focus:ring-4 focus:ring-stone-300"
-        onClick={onLogPractice}
-        type="button"
-      >
-        <Dumbbell className="h-7 w-7" />
-        Log Practice
-      </button>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <button
+          className="flex min-h-16 w-full items-center justify-center gap-3 rounded-lg border border-sky-300 bg-sky-50 px-5 text-xl font-black text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
+          onClick={onOpenHitting}
+          type="button"
+        >
+          <BookOpen className="h-7 w-7" />
+          Hitting Guide
+        </button>
+        <button
+          className="flex min-h-16 w-full items-center justify-center gap-3 rounded-lg bg-stone-950 px-5 text-xl font-black text-white shadow-sm transition hover:bg-stone-800 focus:outline-none focus:ring-4 focus:ring-stone-300"
+          onClick={onLogPractice}
+          type="button"
+        >
+          <Dumbbell className="h-7 w-7" />
+          Log Practice
+        </button>
+      </div>
     </main>
   );
 }
@@ -728,9 +754,9 @@ function QuickLogFlow({
   );
 }
 
-export function HomeApp() {
+export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen } = {}) {
   const [result, setResult] = useState<AppDataResult | null>(null);
-  const [screen, setScreen] = useState<Screen>("picker");
+  const [screen, setScreen] = useState<Screen>(initialScreen);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -853,6 +879,7 @@ export function HomeApp() {
     nextData = recomputeBadgesForPlayer(nextData, input.player.id);
     setResult({ ...result, data: nextData });
     persistLocalState(nextData, result.mode);
+    setSelectedPlayerId(input.player.id);
     setScreen("dashboard");
     setMessage(
       input.require_parent_approval
@@ -932,15 +959,44 @@ export function HomeApp() {
   }
 
   if (screen === "picker" || !selectedPlayer) {
+    if (screen === "lesson") {
+      return (
+        <HittingTrainingModule
+          data={result.data}
+          onBack={() => setScreen("picker")}
+          onSelectPlayer={(playerId) => setSelectedPlayerId(playerId)}
+          onSubmit={handleSubmit}
+          selectedPlayer={selectedPlayer}
+        />
+      );
+    }
+
     return (
       <PlayerPicker
         data={result.data}
         mode={result.mode}
+        onOpenHitting={() => {
+          setSelectedPlayerId(result.data.players[0]?.id ?? null);
+          setMessage(null);
+          setScreen("lesson");
+        }}
         onPickPlayer={(playerId) => {
           setSelectedPlayerId(playerId);
           setMessage(null);
           setScreen("dashboard");
         }}
+      />
+    );
+  }
+
+  if (screen === "lesson") {
+    return (
+      <HittingTrainingModule
+        data={result.data}
+        onBack={() => setScreen("dashboard")}
+        onSelectPlayer={(playerId) => setSelectedPlayerId(playerId)}
+        onSubmit={handleSubmit}
+        selectedPlayer={selectedPlayer}
       />
     );
   }
@@ -968,6 +1024,7 @@ export function HomeApp() {
         setScreen("picker");
         setSelectedPlayerId(null);
       }}
+      onOpenHitting={() => setScreen("lesson")}
       onLogPractice={() => setScreen("log")}
       player={selectedPlayer}
     />

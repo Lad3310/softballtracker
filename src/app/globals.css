@@ -68,3 +68,31 @@ textarea {
 .focus\:ring-supabase-100:focus {
   --tw-ring-color: #d8f8e7;
 }
+
+@page {
+  size: letter;
+  margin: 0.35in;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .poster-page {
+    min-height: auto;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .poster-sheet {
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
+}

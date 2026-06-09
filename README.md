@@ -79,6 +79,10 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+The softball hitting lesson is available at `/hitting`. The printable poster is
+available at `/hitting-chain-poster`, with a static PDF at
+`/hitting-chain-poster.pdf`.
+
 Required env vars:
 
 ```bash
