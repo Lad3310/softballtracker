@@ -96,7 +96,7 @@ function ProgressBar({
       <div
         className={classNames(
           "h-full rounded-full transition-all",
-          tone === "green" ? "bg-supabase" : "bg-sky-500",
+          tone === "green" ? "bg-violet-500" : "bg-sky-500",
         )}
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
@@ -204,7 +204,7 @@ function SummerRewardCard({
         </div>
 
         <p className="mt-5 max-w-2xl rounded-2xl bg-white/15 px-4 py-3 text-sm font-bold text-white/95 backdrop-blur">
-          When the bar is full, a grown-up will add {SUMMER_REWARD_POINTS.toLocaleString()} points
+          When the bar is full, a parent will add {SUMMER_REWARD_POINTS.toLocaleString()} points
           to the Family Rewards app. Approved practice minutes count toward the goal.
         </p>
       </div>
@@ -271,7 +271,7 @@ function PlayerPicker({
           href="/parent"
         >
           <LayoutDashboard className="h-5 w-5" />
-          Grown-up Dashboard
+          Parent Dashboard
         </Link>
       </header>
 
@@ -323,7 +323,7 @@ function PlayerPicker({
           <Trophy className="mb-4 h-12 w-12 text-violet-600" />
           <h2 className="text-2xl font-black text-slate-950">Ready for athletes</h2>
           <p className="mt-2 max-w-md text-lg font-medium text-slate-600">
-            Ask a grown-up to add athlete cards.
+            Ask a parent to add athlete cards.
           </p>
         </section>
       ) : (
@@ -454,7 +454,7 @@ function PlayerDashboard({
           href="/parent"
         >
           <LayoutDashboard className="h-5 w-5" />
-          Grown-up Dashboard
+          Parent Dashboard
         </Link>
       </header>
 
@@ -510,7 +510,7 @@ function PlayerDashboard({
           </p>
           <p className="mt-3 text-2xl font-black">
             {pendingMinutes > 0
-              ? `${pendingMinutes} minutes waiting for a grown-up to approve.`
+              ? `${pendingMinutes} minutes waiting for a parent to approve.`
               : "All caught up!"}
           </p>
           {rejectedCount > 0 ? (
@@ -670,7 +670,7 @@ function QuickLogFlow({
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-supabase-800">
+          <p className="text-sm font-bold uppercase tracking-wide text-violet-700">
             {player.name}
           </p>
           <h1 className="text-2xl font-black text-stone-950 sm:text-4xl">
@@ -691,12 +691,12 @@ function QuickLogFlow({
           ) : (
             availableSports.map((sport) => (
               <button
-                className="flex min-h-24 items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-supabase-border focus:outline-none focus:ring-4 focus:ring-supabase-100"
+                className="flex min-h-24 items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-violet-300 focus:outline-none focus:ring-4 focus:ring-violet-100"
                 key={sport.id}
                 onClick={() => selectSport(sport)}
                 type="button"
               >
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-supabase-50 text-supabase-800">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
                   <span className="text-lg font-black">{sport.icon}</span>
                 </span>
                 <span className="text-2xl font-black text-stone-950">{sport.name}</span>
@@ -708,7 +708,7 @@ function QuickLogFlow({
 
       {step === "type" ? (
         <section>
-          <p className="mb-2 text-sm font-black uppercase tracking-wide text-supabase-800">
+          <p className="mb-2 text-sm font-black uppercase tracking-wide text-violet-700">
             {selectedSport?.name}
           </p>
           <h2 className="mb-4 text-3xl font-black text-stone-950">Choose a practice plan</h2>
@@ -722,12 +722,12 @@ function QuickLogFlow({
             <div className="grid gap-3 sm:grid-cols-2">
               {availableTemplates.map((template) => (
                 <button
-                  className="flex min-h-24 items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-supabase-border focus:outline-none focus:ring-4 focus:ring-supabase-100"
+                  className="flex min-h-24 items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-violet-300 focus:outline-none focus:ring-4 focus:ring-violet-100"
                   key={template.id}
                   onClick={() => selectTemplate(template)}
                   type="button"
                 >
-                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-supabase-50 text-supabase-800">
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
                     <Dumbbell className="h-8 w-8" />
                   </span>
                   <span>
@@ -749,7 +749,7 @@ function QuickLogFlow({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {MINUTE_PRESETS.map((preset) => (
               <button
-                className="min-h-24 rounded-lg border border-stone-200 bg-white text-4xl font-black text-stone-950 shadow-sm transition hover:border-supabase-border focus:outline-none focus:ring-4 focus:ring-supabase-100"
+                className="min-h-24 rounded-2xl border border-slate-200 bg-white text-4xl font-black text-stone-950 shadow-sm transition hover:border-violet-300 focus:outline-none focus:ring-4 focus:ring-violet-100"
                 key={preset}
                 onClick={() => {
                   setMinutes(preset);
@@ -770,7 +770,7 @@ function QuickLogFlow({
               <span className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input
                   aria-invalid={customMinutesInput.trim() !== "" && !customMinutes}
-                  className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                  className="min-h-12 rounded-xl border border-slate-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-violet-100"
                   inputMode="numeric"
                   min={1}
                   onChange={(event) => setCustomMinutesInput(event.target.value)}
@@ -780,7 +780,7 @@ function QuickLogFlow({
                   value={customMinutesInput}
                 />
                 <button
-                  className="flex min-h-12 items-center justify-center rounded-lg border border-supabase-border bg-supabase px-5 font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex min-h-12 items-center justify-center rounded-xl bg-violet-600 px-5 font-black text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-4 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!customMinutes}
                   type="submit"
                 >
@@ -797,7 +797,7 @@ function QuickLogFlow({
           <label className="grid gap-2 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
             <span className="text-xl font-black text-stone-950">Practice date</span>
             <input
-              className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+              className="min-h-12 rounded-xl border border-slate-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-violet-100"
               onChange={(event) => setSessionDate(event.target.value)}
               required
               type="date"
@@ -818,7 +818,7 @@ function QuickLogFlow({
                     className={classNames(
                       "flex min-h-14 items-center gap-3 rounded-lg border p-3 text-left text-base font-black transition",
                       drill.completed
-                        ? "border-supabase-border bg-supabase-50 text-stone-950"
+                        ? "border-violet-300 bg-violet-50 text-violet-950"
                         : "border-stone-200 bg-white text-stone-600",
                     )}
                     key={`${drill.label}-${index}`}
@@ -837,7 +837,7 @@ function QuickLogFlow({
                       className={classNames(
                         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
                         drill.completed
-                          ? "border-supabase-border bg-supabase text-stone-950"
+                          ? "border-violet-600 bg-violet-600 text-white"
                           : "border-stone-300 bg-white",
                       )}
                     >
@@ -900,7 +900,7 @@ function QuickLogFlow({
           <label className="grid gap-2 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
             <span className="text-xl font-black text-stone-950">Notes</span>
             <textarea
-              className="min-h-24 rounded-lg border border-stone-200 p-3 text-base font-medium text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+              className="min-h-24 rounded-xl border border-slate-200 p-3 text-base font-medium text-stone-950 outline-none focus:ring-4 focus:ring-violet-100"
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Optional"
               value={notes}
@@ -908,7 +908,7 @@ function QuickLogFlow({
           </label>
 
           <button
-            className="flex min-h-16 w-full items-center justify-center gap-3 rounded-lg border border-supabase-border bg-supabase px-5 text-xl font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover focus:outline-none focus:ring-4 focus:ring-supabase-100"
+            className="flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl bg-slate-950 px-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-violet-700 focus:outline-none focus:ring-4 focus:ring-violet-200"
             onClick={submit}
             type="button"
           >
@@ -1050,7 +1050,7 @@ export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen }
     setScreen("dashboard");
     setMessage(
       input.require_parent_approval
-        ? "Saved. A grown-up can approve it."
+        ? "Saved. A parent can approve it."
         : "Saved. Those minutes count right now.",
     );
 
@@ -1116,7 +1116,7 @@ export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen }
     return (
       <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-4">
         <section className="rounded-lg border border-stone-200 bg-white p-6 text-center shadow-sm">
-          <Sparkles className="mx-auto h-10 w-10 animate-pulse text-supabase-700" />
+          <Sparkles className="mx-auto h-10 w-10 animate-pulse text-violet-600" />
           <p className="mt-3 text-xl font-black text-stone-950">
             Warming up the practice board.
           </p>

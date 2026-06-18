@@ -7,13 +7,11 @@ import {
   BookOpen,
   Check,
   ClipboardCheck,
-  Download,
   ExternalLink,
   FileText,
   Flame,
   NotebookPen,
   PlayCircle,
-  Printer,
   Sparkles,
   Target,
   Trophy,
@@ -108,9 +106,9 @@ function ProgressPill({
   icon: typeof Trophy;
 }) {
   return (
-    <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-stone-500">
-        <Icon className="h-4 w-4 text-supabase-700" />
+    <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-sky-600">
+        <Icon className="h-4 w-4" />
         {label}
       </div>
       <p className="mt-2 text-2xl font-black text-stone-950">{value}</p>
@@ -232,72 +230,57 @@ export function HittingTrainingModule({
   };
 
   return (
-    <main className="min-h-dvh bg-stone-50">
-      <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6">
+    <main className="min-h-dvh bg-[radial-gradient(circle_at_top_left,_#cffafe_0,_#f8fafc_38%,_#f8fafc_100%)]">
+      <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
         <header className="flex items-center justify-between gap-3">
           <button
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm"
+            aria-label="Go back"
+            className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-sky-100"
             onClick={onBack}
             type="button"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <Link
-            className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-supabase-border bg-white px-3 font-black text-supabase-800 shadow-sm"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-sky-100 bg-white px-4 font-black text-sky-700 shadow-sm transition hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-100"
             href="/parent"
           >
             <UserRound className="h-5 w-5" />
-            Dashboard
+            Parent Dashboard
           </Link>
         </header>
 
-        <section className="mt-4 rounded-lg border border-supabase-border bg-supabase p-5 text-stone-950 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-wide text-stone-800">
-            Softball Hitting Training
-          </p>
-          <h1 className="mt-2 text-3xl font-black sm:text-5xl">
-            The Hitting Chain - Roya & Rayna&apos;s Softball Swing Guide 🥎💪
-          </h1>
-          <p className="mt-4 max-w-3xl text-lg font-black text-stone-900">
-            &quot;If you can throw a rock, you can hit a softball!&quot; - Olympic Coach Mike Candrea
-          </p>
-          <p className="mt-3 max-w-3xl text-base font-bold text-stone-800 sm:text-lg">
-            Stay smooth, relaxed, and let each move prepare the next one. Great effort on
-            every swing - you&apos;re already athletic and committed!
-          </p>
-          <div className="mt-5 grid gap-2 sm:grid-cols-[auto_auto_1fr]">
-            <a
-              className="flex min-h-11 items-center justify-center gap-2 rounded-md border border-stone-950 bg-stone-950 px-4 font-black text-white"
-              download
-              href="/hitting-chain-poster.pdf"
-            >
-              <Download className="h-5 w-5" />
-              Download PDF
-            </a>
-            <Link
-              className="flex min-h-11 items-center justify-center gap-2 rounded-md border border-stone-900 bg-white px-4 font-black text-stone-950"
-              href="/hitting-chain-poster"
-              target="_blank"
-            >
-              <Printer className="h-5 w-5" />
-              Poster / Save PDF
-            </Link>
+        <section className="relative mt-4 overflow-hidden rounded-[2rem] bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 p-6 text-white shadow-xl shadow-sky-200/60 sm:p-8">
+          <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full border-[28px] border-white/10" />
+          <div className="absolute -bottom-16 right-24 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative max-w-3xl">
+            <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-cyan-50">
+              <BookOpen className="h-5 w-5" />
+              Softball hitting guide
+            </p>
+            <h1 className="mt-3 text-4xl font-black leading-tight sm:text-6xl">
+              See it. Swing quick. Drive the ball.
+            </h1>
+            <p className="mt-4 max-w-2xl text-lg font-bold text-sky-50 sm:text-xl">
+              Learn one cue, try one drill, and log the minutes. Smooth moves build strong,
+              confident swings.
+            </p>
           </div>
         </section>
 
         <section className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="rounded-lg border border-stone-200 bg-white p-3 shadow-sm">
-            <p className="mb-2 text-xs font-black uppercase tracking-wide text-stone-500">
-              Quick profile switch
+          <div className="rounded-2xl border border-sky-100 bg-white p-3 shadow-sm">
+            <p className="mb-2 px-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+              Who is practicing?
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {data.players.map((player) => (
                 <button
                   className={classNames(
-                    "flex min-h-14 items-center justify-between rounded-md border px-3 text-left font-black transition",
+                    "flex min-h-14 items-center justify-between rounded-xl border px-4 text-left font-black transition focus:outline-none focus:ring-4 focus:ring-sky-100",
                     activePlayer?.id === player.id
-                      ? "border-supabase-border bg-supabase-50 text-stone-950"
-                      : "border-stone-200 bg-white text-stone-700",
+                      ? "border-sky-300 bg-sky-50 text-sky-950"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-sky-200",
                   )}
                   key={player.id}
                   onClick={() => onSelectPlayer(player.id)}
@@ -310,11 +293,11 @@ export function HittingTrainingModule({
             </div>
           </div>
 
-          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 shadow-sm">
-            <p className="text-sm font-black uppercase tracking-wide text-sky-700">
+          <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 shadow-sm">
+            <p className="text-sm font-black uppercase tracking-[0.14em] text-cyan-700">
               Today&apos;s cue
             </p>
-            <p className="mt-2 text-xl font-black text-sky-950">
+            <p className="mt-2 text-xl font-black text-cyan-950">
               See the ball, hit the ball, rotate hard.
             </p>
           </div>
@@ -341,7 +324,10 @@ export function HittingTrainingModule({
           </section>
         ) : null}
 
-        <nav className="sticky top-0 z-10 -mx-4 mt-4 overflow-x-auto border-y border-stone-200 bg-stone-50/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-lg sm:border">
+        <nav
+          aria-label="Hitting guide sections"
+          className="sticky top-0 z-10 -mx-4 mt-4 overflow-x-auto border-y border-sky-100 bg-slate-50/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border"
+        >
           <div className="flex min-w-max gap-2">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -349,10 +335,10 @@ export function HittingTrainingModule({
               return (
                 <button
                   className={classNames(
-                    "flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-black",
+                    "flex min-h-12 items-center gap-2 rounded-xl border px-4 text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-sky-100",
                     activeTab === tab.id
-                      ? "border-stone-950 bg-stone-950 text-white"
-                      : "border-stone-200 bg-white text-stone-700",
+                      ? "border-sky-600 bg-sky-600 text-white shadow-sm"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-sky-200",
                   )}
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -368,9 +354,9 @@ export function HittingTrainingModule({
 
         {activeTab === "overview" ? (
           <section className="mt-4 grid gap-4">
-            <div className="rounded-lg border border-supabase-border bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
               <div className="flex items-start gap-3">
-                <Sparkles className="mt-1 h-6 w-6 text-supabase-700" />
+                <Sparkles className="mt-1 h-6 w-6 text-sky-600" />
                 <div>
                   <h2 className="text-2xl font-black text-stone-950">
                     The 6-Step Hitting Chain
@@ -385,7 +371,7 @@ export function HittingTrainingModule({
             <div className="grid gap-3 md:grid-cols-2">
               {HITTING_CHAIN_STEPS.map((step, index) => (
                 <article
-                  className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                   key={step.id}
                 >
                   <div className="flex items-start gap-3">
@@ -394,11 +380,11 @@ export function HittingTrainingModule({
                     </span>
                     <div>
                       <h3 className="text-xl font-black text-stone-950">{step.title}</h3>
-                      <p className="mt-1 font-black text-supabase-800">{step.cue}</p>
+                      <p className="mt-1 font-black text-sky-700">{step.cue}</p>
                     </div>
                   </div>
                   <p className="mt-3 text-base font-bold text-stone-600">{step.body}</p>
-                  <p className="mt-3 rounded-md bg-stone-100 px-3 py-2 text-sm font-black text-stone-700">
+                  <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-sm font-black text-sky-900">
                     {step.kidCheck}
                   </p>
                 </article>
@@ -409,7 +395,7 @@ export function HittingTrainingModule({
 
         {activeTab === "analysis" ? (
           <section className="mt-4 grid gap-4">
-            <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 shadow-sm">
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm">
               <h2 className="text-2xl font-black text-sky-950">
                 Swing Analysis & Personalized Tips
               </h2>
@@ -419,7 +405,7 @@ export function HittingTrainingModule({
                 stronger and more consistent, especially useful moving into travel/8U leagues.
               </p>
               <button
-                className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-4 font-black text-white"
+                className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 font-black text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-200"
                 onClick={openSwingReview}
                 type="button"
               >
@@ -435,10 +421,10 @@ export function HittingTrainingModule({
               <div className="grid gap-2 sm:grid-cols-2">
                 {ANALYSIS_STRENGTHS.map((strength) => (
                   <div
-                    className="flex min-h-16 items-start gap-3 rounded-lg border border-supabase-border bg-supabase-50 p-3"
+                    className="flex min-h-16 items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4"
                     key={strength}
                   >
-                    <Check className="mt-1 h-5 w-5 shrink-0 text-supabase-800" />
+                    <Check className="mt-1 h-5 w-5 shrink-0 text-sky-700" />
                     <p className="font-black text-stone-800">{strength}</p>
                   </div>
                 ))}
@@ -452,7 +438,7 @@ export function HittingTrainingModule({
               <div className="grid gap-3">
                 {ANALYSIS_AREAS.map((area, index) => (
                   <details
-                    className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                     key={area.title}
                     open={index === 0}
                   >
@@ -463,7 +449,7 @@ export function HittingTrainingModule({
                       <span className="font-black text-stone-950">Look for: </span>
                       {area.issue}
                     </p>
-                    <p className="mt-3 text-base font-bold text-supabase-900">
+                    <p className="mt-3 text-base font-bold text-sky-900">
                       <span className="font-black text-stone-950">Fix: </span>
                       {area.fix}
                     </p>
@@ -472,7 +458,7 @@ export function HittingTrainingModule({
               </div>
             </section>
 
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
               <h3 className="text-xl font-black text-amber-950">Biggest Opportunity</h3>
               <p className="mt-2 text-base font-black text-amber-900">
                 Reduce long arm path and improve sequencing (hips before hands). Better
@@ -487,7 +473,7 @@ export function HittingTrainingModule({
               <div className="grid gap-3 md:grid-cols-2">
                 {TARGETED_DRILLS.map((drill) => (
                   <article
-                    className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                     key={drill.name}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -500,7 +486,7 @@ export function HittingTrainingModule({
                       {drill.chain}
                     </p>
                     <p className="mt-2 font-bold text-stone-600">{drill.instructions}</p>
-                    <p className="mt-3 rounded-md bg-supabase-50 px-3 py-2 text-sm font-black text-supabase-900">
+                    <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-sm font-black text-sky-900">
                       Fixes: {drill.fixes}
                     </p>
                   </article>
@@ -508,14 +494,14 @@ export function HittingTrainingModule({
               </div>
             </section>
 
-            <details className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm" open>
+            <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" open>
               <summary className="cursor-pointer text-xl font-black text-stone-950">
                 Other Practical Tips
               </summary>
               <ul className="mt-3 grid gap-2">
                 {PRACTICAL_TIPS.map((tip) => (
                   <li className="flex gap-2 font-bold text-stone-700" key={tip}>
-                    <span className="text-supabase-800">•</span>
+                    <span className="text-sky-700">•</span>
                     <span>{tip}</span>
                   </li>
                 ))}
@@ -533,7 +519,7 @@ export function HittingTrainingModule({
               <div className="grid gap-3 md:grid-cols-2">
                 {CORE_DRILLS.map((drill) => (
                   <article
-                    className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                     key={drill.name}
                   >
                     <h3 className="text-lg font-black text-stone-950">{drill.name}</h3>
@@ -541,7 +527,7 @@ export function HittingTrainingModule({
                       Chain: {drill.chain}
                     </p>
                     <p className="mt-2 font-bold text-stone-600">{drill.how}</p>
-                    <p className="mt-3 rounded-md bg-supabase-50 px-3 py-2 text-sm font-black text-supabase-900">
+                    <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-sm font-black text-sky-900">
                       Addresses: {drill.fixes}
                     </p>
                   </article>
@@ -554,7 +540,7 @@ export function HittingTrainingModule({
               <div className="grid gap-3 lg:grid-cols-4">
                 {WEEKLY_HITTING_SCHEDULE.map((day) => (
                   <article
-                    className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm"
+                    className="rounded-2xl border border-sky-200 bg-white p-5 shadow-sm"
                     key={day.day}
                   >
                     <p className="text-sm font-black uppercase tracking-wide text-sky-700">
@@ -562,7 +548,7 @@ export function HittingTrainingModule({
                     </p>
                     <h4 className="mt-1 text-lg font-black text-stone-950">{day.focus}</h4>
                     <p className="mt-2 font-bold text-stone-600">{day.plan}</p>
-                    <p className="mt-3 text-sm font-black text-supabase-900">
+                    <p className="mt-3 text-sm font-black text-sky-900">
                       Helps with: {day.issues}
                     </p>
                   </article>
@@ -570,14 +556,14 @@ export function HittingTrainingModule({
               </div>
             </section>
 
-            <details className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm" open>
+            <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" open>
               <summary className="cursor-pointer text-xl font-black text-stone-950">
                 Monthly Progression
               </summary>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 {MONTHLY_PROGRESSIONS.map((phase) => (
                   <div
-                    className="rounded-lg border border-stone-200 bg-stone-50 p-3"
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-4"
                     key={phase.phase}
                   >
                     <p className="text-sm font-black uppercase tracking-wide text-stone-500">
@@ -594,7 +580,7 @@ export function HittingTrainingModule({
 
         {activeTab === "videos" ? (
           <section className="mt-4 grid gap-4">
-            <div className="rounded-lg border border-supabase-border bg-white p-4 shadow-sm">
+            <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
               <h2 className="text-2xl font-black text-stone-950">Videos & Resources</h2>
               <p className="mt-2 font-bold text-stone-600">
                 Watch one clip, then practice one cue. Keep the lesson simple and fun.
@@ -603,7 +589,7 @@ export function HittingTrainingModule({
             <div className="grid gap-3 md:grid-cols-2">
               {VIDEO_RESOURCES.map((resource) => (
                 <a
-                  className="group rounded-lg border border-stone-200 bg-white p-4 shadow-sm transition hover:border-supabase-border hover:shadow-md"
+                  className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-sky-100"
                   href={resource.url}
                   key={resource.url}
                   rel="noreferrer"
@@ -612,7 +598,7 @@ export function HittingTrainingModule({
                   <div className="flex items-start gap-3">
                     <PlayCircle className="mt-1 h-7 w-7 shrink-0 text-sky-600" />
                     <div>
-                      <h3 className="text-lg font-black text-stone-950 group-hover:text-supabase-800">
+                      <h3 className="text-lg font-black text-stone-950 group-hover:text-sky-700">
                         {resource.title}
                       </h3>
                       <p className="mt-2 font-bold text-stone-600">{resource.description}</p>
@@ -630,7 +616,7 @@ export function HittingTrainingModule({
         {activeTab === "log" ? (
           <section className="mt-4 grid gap-4 lg:grid-cols-[1fr_20rem]">
             <form
-              className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+              className="grid gap-5 rounded-2xl border border-sky-100 bg-white p-5 shadow-sm sm:p-6"
               onSubmit={submitLog}
             >
               <div>
@@ -645,7 +631,7 @@ export function HittingTrainingModule({
                 <label className="grid gap-2">
                   <span className="font-black text-stone-950">Date</span>
                   <input
-                    className="min-h-12 rounded-md border border-stone-200 px-3 font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                    className="min-h-12 rounded-xl border border-slate-200 px-3 font-bold text-stone-950 outline-none focus:ring-4 focus:ring-sky-100"
                     onChange={(event) => setSessionDate(event.target.value)}
                     required
                     type="date"
@@ -656,7 +642,7 @@ export function HittingTrainingModule({
                   <span className="font-black text-stone-950">Total time (minutes)</span>
                   <input
                     aria-invalid={minutesInput.trim() !== "" && !minutes}
-                    className="min-h-12 rounded-md border border-stone-200 px-3 font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                    className="min-h-12 rounded-xl border border-slate-200 px-3 font-bold text-stone-950 outline-none focus:ring-4 focus:ring-sky-100"
                     inputMode="numeric"
                     min={1}
                     onChange={(event) => setMinutesInput(event.target.value)}
@@ -675,9 +661,9 @@ export function HittingTrainingModule({
                   {(["Hitting Practice", "Swing Analysis Review"] as const).map((kind) => (
                     <button
                       className={classNames(
-                        "min-h-12 rounded-md border px-3 font-black",
+                        "min-h-12 rounded-xl border px-3 font-black",
                         logKind === kind
-                          ? "border-stone-950 bg-stone-950 text-white"
+                          ? "border-sky-600 bg-sky-600 text-white"
                           : "border-stone-200 bg-white text-stone-700",
                       )}
                       key={kind}
@@ -698,9 +684,9 @@ export function HittingTrainingModule({
                   {logDrillOptions.map((drill) => (
                     <button
                       className={classNames(
-                        "flex min-h-12 items-center gap-2 rounded-md border px-3 text-left text-sm font-black",
+                        "flex min-h-12 items-center gap-2 rounded-xl border px-3 text-left text-sm font-black",
                         selectedDrills.includes(drill)
-                          ? "border-supabase-border bg-supabase-50 text-stone-950"
+                          ? "border-sky-300 bg-sky-50 text-sky-950"
                           : "border-stone-200 bg-white text-stone-700",
                       )}
                       key={drill}
@@ -711,7 +697,7 @@ export function HittingTrainingModule({
                         className={classNames(
                           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
                           selectedDrills.includes(drill)
-                            ? "border-supabase-border bg-supabase"
+                            ? "border-sky-600 bg-sky-600 text-white"
                             : "border-stone-300 bg-white",
                         )}
                       >
@@ -731,7 +717,7 @@ export function HittingTrainingModule({
                   {HITTING_CHAIN_STEPS.map((step) => (
                     <button
                       className={classNames(
-                        "min-h-12 rounded-md border px-3 text-sm font-black",
+                        "min-h-12 rounded-xl border px-3 text-sm font-black",
                         selectedSteps.includes(step.id)
                           ? "border-sky-500 bg-sky-50 text-sky-950"
                           : "border-stone-200 bg-white text-stone-700",
@@ -751,7 +737,7 @@ export function HittingTrainingModule({
               <label className="grid gap-2">
                 <span className="font-black text-stone-950">Swing Review / Notes</span>
                 <textarea
-                  className="min-h-28 rounded-md border border-stone-200 p-3 font-medium text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                  className="min-h-28 rounded-xl border border-slate-200 p-3 font-medium text-stone-950 outline-none focus:ring-4 focus:ring-sky-100"
                   onChange={(event) => setReviewNotes(event.target.value)}
                   placeholder="Worked on shorter stride and knob to ball. Video notes: side view looked balanced."
                   value={reviewNotes}
@@ -761,7 +747,7 @@ export function HittingTrainingModule({
               <label className="grid gap-2">
                 <span className="font-black text-stone-950">How it felt / What improved</span>
                 <textarea
-                  className="min-h-24 rounded-md border border-stone-200 p-3 font-medium text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                  className="min-h-24 rounded-xl border border-slate-200 p-3 font-medium text-stone-950 outline-none focus:ring-4 focus:ring-sky-100"
                   onChange={(event) => setImprovedText(event.target.value)}
                   placeholder="More line drives. Stayed balanced at the finish."
                   value={improvedText}
@@ -774,7 +760,7 @@ export function HittingTrainingModule({
                   {FEELINGS.map((candidate) => (
                     <button
                       className={classNames(
-                        "min-h-12 rounded-md border px-3 font-black",
+                        "min-h-12 rounded-xl border px-3 font-black",
                         feeling === candidate
                           ? "border-rose-400 bg-rose-50 text-rose-950"
                           : "border-stone-200 bg-white text-stone-700",
@@ -790,7 +776,7 @@ export function HittingTrainingModule({
               </div>
 
               <button
-                className="flex min-h-14 items-center justify-center gap-2 rounded-md border border-supabase-border bg-supabase px-4 text-lg font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-16 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-xl font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!activePlayer || !softballSport || !minutes}
                 type="submit"
               >
@@ -800,24 +786,24 @@ export function HittingTrainingModule({
             </form>
 
             <aside className="grid content-start gap-3">
-              <div className="rounded-lg border border-supabase-border bg-supabase-50 p-4 shadow-sm">
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm">
                 <h3 className="text-lg font-black text-stone-950">Current player</h3>
-                <p className="mt-2 text-2xl font-black text-supabase-900">
+                <p className="mt-2 text-2xl font-black text-sky-900">
                   {activePlayer ? profileLabel(activePlayer) : "Add an athlete first"}
                 </p>
               </div>
-              <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-black text-stone-950">Totals</h3>
                 <p className="mt-2 font-bold text-stone-600">
                   {Math.round((totalHittingMinutes / 60) * 10) / 10} total hitting hours logged.
                 </p>
                 <p className="mt-2 font-bold text-stone-600">
                   {data.settings.require_parent_approval
-                    ? "A grown-up approves sessions before they count toward goals."
+                    ? "A parent approves sessions before they count toward goals."
                     : "Saved sessions count right away."}
                 </p>
               </div>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
                 <FileText className="h-6 w-6 text-amber-700" />
                 <p className="mt-2 font-black text-amber-950">
                   Tweak one thing per session. Praise effort and contact first.

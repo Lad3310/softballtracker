@@ -195,7 +195,7 @@ export function PitchingTrainingModule({
             href="/parent"
           >
             <UserRound className="h-5 w-5" />
-            Grown-up
+            Parent Dashboard
           </Link>
         </header>
 
@@ -423,7 +423,7 @@ export function PitchingTrainingModule({
               <h2 className="text-3xl font-black text-slate-950">10 most-viewed pitching guides</h2>
               <p className="mt-2 font-bold text-slate-600">
                 Ranked by public YouTube views checked {PITCHING_VIDEO_RESEARCH_DATE}. View
-                counts change over time. Watch with a grown-up and follow your coach’s cues.
+                counts change over time. Watch with a parent and follow your coach’s cues.
               </p>
             </div>
             <ol className="grid gap-3 md:grid-cols-2">
@@ -607,7 +607,7 @@ export function PitchingTrainingModule({
                 </p>
                 <p className="mt-2 text-sm font-bold text-slate-600">
                   {data.settings.require_parent_approval
-                    ? "A grown-up approves the session before it counts toward the summer goal."
+                    ? "A parent approves the session before it counts toward the summer goal."
                     : "Saved sessions count toward the summer goal right away."}
                 </p>
               </div>
