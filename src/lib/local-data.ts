@@ -20,17 +20,8 @@ import type {
 const LOCAL_DATA_KEY = "softball-tracker:data";
 const QUEUED_SESSIONS_KEY = "softball-tracker:queued-sessions";
 const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
-const HOCKEY_SPORT_ID = "10000000-0000-4000-8000-000000000005";
-const RETIRED_STARTER_SPORT_IDS = new Set([
-  "10000000-0000-4000-8000-000000000002",
-  "10000000-0000-4000-8000-000000000003",
-  "10000000-0000-4000-8000-000000000004",
-]);
 
-const SPORT_SEEDS = [
-  [SOFTBALL_SPORT_ID, "Softball", "SB"],
-  [HOCKEY_SPORT_ID, "Hockey", "HK"],
-] as const;
+const SPORT_SEEDS = [[SOFTBALL_SPORT_ID, "Softball", "SB"]] as const;
 
 const TEMPLATE_SEEDS = [
   {
@@ -90,24 +81,6 @@ const TEMPLATE_SEEDS = [
     name: "Preset fielding",
     practice_type: "Fielding",
     items: ["ground balls", "fly balls", "throwing mechanics", "catching practice"],
-  },
-  {
-    id: "template-hockey-stickhandling",
-    sport_id: HOCKEY_SPORT_ID,
-    name: "Stickhandling",
-    practice_type: "Stickhandling",
-    items: [
-      "stationary puck control",
-      "forehand and backhand touches",
-      "stickhandle through cones",
-    ],
-  },
-  {
-    id: "template-hockey-shooting",
-    sport_id: HOCKEY_SPORT_ID,
-    name: "Shooting",
-    practice_type: "Shooting",
-    items: ["wrist shots", "backhand shots", "shoot to targets"],
   },
 ];
 
@@ -239,13 +212,14 @@ export function loadStoredLocalData() {
   try {
     const seed = createSeedData();
     const parsed = JSON.parse(raw) as AppData;
-    const sessions = (parsed.sessions ?? []).map((session) => ({
-      ...session,
-      sport_id: session.sport_id ?? SOFTBALL_SPORT_ID,
-    }));
-    const historicalSportIds = new Set(sessions.map((session) => session.sport_id));
+    const sessions = (parsed.sessions ?? [])
+      .map((session) => ({
+        ...session,
+        sport_id: session.sport_id ?? SOFTBALL_SPORT_ID,
+      }))
+      .filter((session) => session.sport_id === SOFTBALL_SPORT_ID);
     const storedSports = (parsed.sports ?? []).filter(
-      (sport) => !RETIRED_STARTER_SPORT_IDS.has(sport.id) || historicalSportIds.has(sport.id),
+      (sport) => sport.id === SOFTBALL_SPORT_ID,
     );
     const sports = [
       ...storedSports,
@@ -258,7 +232,7 @@ export function loadStoredLocalData() {
         ...template,
         sport_id: template.sport_id ?? SOFTBALL_SPORT_ID,
       }))
-      .filter((template) => !RETIRED_STARTER_SPORT_IDS.has(template.sport_id));
+      .filter((template) => template.sport_id === SOFTBALL_SPORT_ID);
     const templateKeys = new Set(
       storedTemplates.map((template) => `${template.sport_id}:${template.practice_type}`),
     );
@@ -274,7 +248,7 @@ export function loadStoredLocalData() {
       ...parsed,
       sports,
       playerSports: (parsed.playerSports ?? seed.playerSports).filter(
-        (playerSport) => !RETIRED_STARTER_SPORT_IDS.has(playerSport.sport_id),
+        (playerSport) => playerSport.sport_id === SOFTBALL_SPORT_ID,
       ),
       sessions,
       templates,
@@ -297,7 +271,9 @@ export function loadQueuedSessions() {
   try {
     return (
       JSON.parse(readBrowserStorage(QUEUED_SESSIONS_KEY) ?? "[]") as PracticeSession[]
-    ).map((session) => ({ ...session, sport_id: session.sport_id ?? SOFTBALL_SPORT_ID }));
+    )
+      .map((session) => ({ ...session, sport_id: session.sport_id ?? SOFTBALL_SPORT_ID }))
+      .filter((session) => session.sport_id === SOFTBALL_SPORT_ID);
   } catch {
     return [];
   }

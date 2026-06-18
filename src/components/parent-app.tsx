@@ -3,19 +3,26 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  Activity,
   ArrowLeft,
+  CalendarCheck,
   Check,
   ClipboardList,
+  Clock3,
   Edit3,
   Frown,
+  Gift,
   Medal,
   Plus,
   Save,
   Settings,
+  ShieldCheck,
+  Sparkles,
+  Target,
   Trash2,
   X,
 } from "lucide-react";
-import { FEELINGS, FOCUS_TAGS } from "@/lib/config";
+import { FEELINGS, FOCUS_TAGS, SUMMER_REWARD_POINTS } from "@/lib/config";
 import { recomputePlayerBadges } from "@/lib/badges";
 import { parsePositiveIntegerInput } from "@/lib/input";
 import {
@@ -29,11 +36,10 @@ import {
   savePlayerRemote,
   saveSessionRemote,
   saveSettingsRemote,
-  saveSportRemote,
   saveTemplateRemote,
 } from "@/lib/data-client";
 import { createId, formatShortDate, getAppDateKey, nowIso } from "@/lib/time";
-import { getMaxStreak, getSummerProgress, getWeeklyProgress } from "@/lib/progress";
+import { getMaxStreak, getSummerRewardProgress, getWeeklyProgress } from "@/lib/progress";
 import type {
   AppData,
   AppDataResult,
@@ -44,20 +50,38 @@ import type {
   PlayerSport,
   PracticeSession,
   SessionStatus,
-  Sport,
 } from "@/lib/types";
+
+const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
 
 function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" | "blue" }) {
+function ProgressBar({
+  value,
+  tone = "violet",
+  label = "Progress",
+}: {
+  value: number;
+  tone?: "violet" | "blue";
+  label?: string;
+}) {
   return (
-    <div className="h-3 w-full overflow-hidden rounded-full bg-stone-200">
+    <div
+      aria-label={label}
+      aria-valuemax={100}
+      aria-valuemin={0}
+      aria-valuenow={Math.min(100, Math.max(0, value))}
+      className="h-3 w-full overflow-hidden rounded-full bg-slate-100"
+      role="progressbar"
+    >
       <div
         className={classNames(
           "h-full rounded-full transition-all",
-          tone === "green" ? "bg-supabase" : "bg-sky-500",
+          tone === "violet"
+            ? "bg-gradient-to-r from-violet-500 to-fuchsia-500"
+            : "bg-gradient-to-r from-cyan-500 to-blue-500",
         )}
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
@@ -65,9 +89,39 @@ function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" 
   );
 }
 
+function DashboardStat({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: typeof Activity;
+  label: string;
+  value: string;
+  tone: "amber" | "sky" | "violet";
+}) {
+  const toneClasses = {
+    amber: "bg-amber-100 text-amber-700",
+    sky: "bg-sky-100 text-sky-700",
+    violet: "bg-violet-100 text-violet-700",
+  } as const;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span className={classNames("flex h-11 w-11 items-center justify-center rounded-xl", toneClasses[tone])}>
+          <Icon className="h-5 w-5" />
+        </span>
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      </div>
+      <p className="mt-4 text-4xl font-black text-slate-950">{value}</p>
+    </div>
+  );
+}
+
 function sessionStatusStyle(status: SessionStatus) {
   if (status === "approved") {
-    return "border-supabase-border bg-supabase-50 text-supabase-800";
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
 
   if (status === "rejected") {
@@ -112,7 +166,7 @@ function SessionEditor({
 
   return (
     <div className="fixed inset-0 z-20 overflow-auto bg-stone-950/40 p-4">
-      <section className="mx-auto max-w-2xl rounded-lg bg-white p-5 shadow-xl">
+      <section className="mx-auto max-w-2xl rounded-2xl bg-white p-5 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-black text-stone-950">Edit session</h2>
           <button
@@ -238,7 +292,7 @@ function SessionEditor({
           </label>
         </div>
 
-        <div className="mt-4 rounded-lg border border-stone-200 p-3">
+        <div className="mt-4 rounded-2xl border border-slate-200 p-4">
           <h3 className="font-black text-stone-950">Drills</h3>
           <div className="mt-3 grid gap-2">
             {draft.drills.map((drill, index) => (
@@ -247,7 +301,7 @@ function SessionEditor({
                   className={classNames(
                     "flex min-h-11 items-center justify-center rounded-md border px-3 font-black",
                     drill.completed
-                      ? "border-supabase-border bg-supabase-50 text-supabase-800"
+                      ? "border-sky-300 bg-sky-50 text-sky-800"
                       : "border-stone-200 bg-white text-stone-500",
                   )}
                   onClick={() =>
@@ -324,15 +378,14 @@ function PendingCard({
 }) {
   const [reason, setReason] = useState("");
   const player = data.players.find((candidate) => candidate.id === session.player_id);
-  const sport = data.sports.find((candidate) => candidate.id === session.sport_id);
 
   return (
-    <article className="rounded-lg border border-amber-200 bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-black uppercase tracking-wide text-amber-700">Pending</p>
           <h3 className="mt-1 text-xl font-black text-stone-950">
-            {player?.name ?? "Athlete"} - {sport?.name ?? "Sport"} - {session.practice_type}
+            {player?.name ?? "Athlete"} - {session.practice_type}
           </h3>
           <p className="mt-1 font-bold text-stone-600">
             {session.minutes} min on {formatShortDate(session.session_date)}
@@ -341,7 +394,7 @@ function PendingCard({
         </div>
         <div className="flex gap-2">
           <button
-            className="flex min-h-11 items-center gap-2 rounded-md border border-supabase-border bg-supabase px-3 font-black text-stone-950"
+            className="flex min-h-11 items-center gap-2 rounded-xl bg-violet-600 px-4 font-black text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-4 focus:ring-violet-100"
             onClick={() => onApprove(session)}
             type="button"
           >
@@ -381,21 +434,15 @@ function PendingCard({
 
 function PlayerSettingsCard({
   player,
-  sports,
-  assignments,
   onDelete,
-  onToggleSport,
   onUpdate,
 }: {
   player: Player;
-  sports: Sport[];
-  assignments: PlayerSport[];
   onDelete: (player: Player) => void;
-  onToggleSport: (player: Player, sportId: string) => void;
   onUpdate: (player: Player) => void;
 }) {
   return (
-    <article className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-start justify-between gap-3">
         <h3 className="text-xl font-black text-stone-950">{player.name}</h3>
         <button
@@ -486,51 +533,23 @@ function PlayerSettingsCard({
           />
         </label>
       </div>
-      <div className="mt-4">
-        <p className="text-sm font-black text-stone-600">Sports</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {sports.map((sport) => {
-            const selected = assignments.some((assignment) => assignment.sport_id === sport.id);
-
-            return (
-              <button
-                aria-pressed={selected}
-                className={classNames(
-                  "min-h-10 rounded-md border px-3 text-sm font-black",
-                  selected
-                    ? "border-supabase-border bg-supabase-50 text-supabase-800"
-                    : "border-stone-200 bg-white text-stone-500",
-                )}
-                key={sport.id}
-                onClick={() => onToggleSport(player, sport.id)}
-                type="button"
-              >
-                {selected ? "Selected: " : ""}
-                {sport.name}
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </article>
   );
 }
 
 function TemplateCard({
   template,
-  sport,
   onSave,
 }: {
   template: DrillTemplate;
-  sport: Sport | undefined;
   onSave: (template: DrillTemplate) => void;
 }) {
   const [draft, setDraft] = useState(template);
 
   return (
-    <article className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-      <p className="mb-3 text-sm font-black uppercase tracking-wide text-supabase-800">
-        {sport?.name ?? "Sport"}
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="mb-3 text-sm font-black uppercase tracking-wide text-sky-700">
+        Softball practice plan
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-black text-stone-600">
@@ -617,9 +636,7 @@ export function ParentApp() {
   const [result, setResult] = useState<AppDataResult | null>(null);
   const [editingSession, setEditingSession] = useState<PracticeSession | null>(null);
   const [newPlayerName, setNewPlayerName] = useState("");
-  const [newSportName, setNewSportName] = useState("");
   const [newPlanName, setNewPlanName] = useState("");
-  const [newPlanSportId, setNewPlanSportId] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -794,21 +811,18 @@ export function ParentApp() {
       weekly_goal_minutes: 90,
       summer_goal_minutes: 1200,
       summer_start_date: `${year}-06-01`,
-      summer_end_date: `${year}-08-31`,
+      summer_end_date: `${year}-08-09`,
       created_at: timestamp,
     };
-    const defaultSport = data.sports[0];
-    const assignment: PlayerSport | null = defaultSport
-      ? {
-          player_id: player.id,
-          sport_id: defaultSport.id,
-          created_at: timestamp,
-        }
-      : null;
+    const assignment: PlayerSport = {
+      player_id: player.id,
+      sport_id: SOFTBALL_SPORT_ID,
+      created_at: timestamp,
+    };
     const nextData = {
       ...data,
       players: [...data.players, player],
-      playerSports: assignment ? [...data.playerSports, assignment] : data.playerSports,
+      playerSports: [...data.playerSports, assignment],
     };
 
     setNewPlayerName("");
@@ -817,7 +831,7 @@ export function ParentApp() {
       try {
         if (mode === "supabase") {
           await savePlayerRemote(player);
-          await replacePlayerSportsRemote(player.id, assignment ? [assignment] : []);
+          await replacePlayerSportsRemote(player.id, [assignment]);
         }
         setNotice("Athlete added.");
       } catch (caught) {
@@ -826,78 +840,8 @@ export function ParentApp() {
     })();
   };
 
-  const togglePlayerSport = async (player: Player, sportId: string) => {
-    if (!data) {
-      return;
-    }
-
-    const current = data.playerSports.filter((assignment) => assignment.player_id === player.id);
-    const selected = current.some((assignment) => assignment.sport_id === sportId);
-    const nextAssignments = selected
-      ? current.filter((assignment) => assignment.sport_id !== sportId)
-      : [...current, { player_id: player.id, sport_id: sportId, created_at: nowIso() }];
-    const nextData = {
-      ...data,
-      playerSports: [
-        ...data.playerSports.filter((assignment) => assignment.player_id !== player.id),
-        ...nextAssignments,
-      ],
-    };
-    updateData(nextData);
-
-    try {
-      if (mode === "supabase") {
-        await replacePlayerSportsRemote(player.id, nextAssignments);
-      }
-      setNotice("Athlete sports saved.");
-    } catch (caught) {
-      setNotice(caught instanceof Error ? caught.message : "Sports saved on this device.");
-    }
-  };
-
-  const addSport = async () => {
-    if (!data || !data.family || !newSportName.trim()) {
-      return;
-    }
-
-    const name = newSportName.trim();
-
-    if (data.sports.some((sport) => sport.name.toLowerCase() === name.toLowerCase())) {
-      setNotice("That sport is already available.");
-      return;
-    }
-
-    const sport: Sport = {
-      id: createId(),
-      family_id: data.family.id,
-      name,
-      icon: name.slice(0, 2).toUpperCase(),
-      display_order: data.sports.length * 10 + 10,
-      created_at: nowIso(),
-    };
-    const nextData = { ...data, sports: [...data.sports, sport] };
-    setNewSportName("");
-    updateData(nextData);
-
-    try {
-      if (mode === "supabase") {
-        await saveSportRemote(sport);
-      }
-      setNotice("Custom sport added.");
-    } catch (caught) {
-      setNotice(caught instanceof Error ? caught.message : "Sport saved on this device.");
-    }
-  };
-
   const addTemplate = async () => {
     if (!data || !data.family || !newPlanName.trim()) {
-      return;
-    }
-
-    const sportId = newPlanSportId || data.sports[0]?.id;
-
-    if (!sportId) {
-      setNotice("Add a sport before creating a practice plan.");
       return;
     }
 
@@ -905,7 +849,7 @@ export function ParentApp() {
     const template: DrillTemplate = {
       id: createId(),
       family_id: data.family.id,
-      sport_id: sportId,
+      sport_id: SOFTBALL_SPORT_ID,
       name: newPlanName.trim(),
       practice_type: newPlanName.trim(),
       editable: true,
@@ -1000,7 +944,7 @@ export function ParentApp() {
   if (error) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-4">
-        <section className="max-w-md rounded-lg border border-rose-200 bg-white p-6 text-center shadow-sm">
+        <section className="max-w-md rounded-2xl border border-rose-200 bg-white p-6 text-center shadow-sm">
           <Frown className="mx-auto h-10 w-10 text-rose-600" />
           <h1 className="mt-3 text-2xl font-black text-stone-950">Parent page needs help</h1>
           <p className="mt-2 text-base font-bold text-stone-600">{error}</p>
@@ -1012,8 +956,8 @@ export function ParentApp() {
   if (!data) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-4">
-        <section className="rounded-lg border border-stone-200 bg-white p-6 text-center shadow-sm">
-          <Settings className="mx-auto h-10 w-10 animate-pulse text-supabase-700" />
+        <section className="rounded-2xl border border-violet-100 bg-white p-6 text-center shadow-sm">
+          <Settings className="mx-auto h-10 w-10 animate-pulse text-violet-600" />
           <p className="mt-3 text-xl font-black text-stone-950">Loading parent tools.</p>
         </section>
       </main>
@@ -1021,7 +965,8 @@ export function ParentApp() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-6xl px-4 py-4 sm:px-6">
+    <main className="min-h-dvh bg-[radial-gradient(circle_at_top_left,_#ede9fe_0,_#f8fafc_40%,_#f8fafc_100%)]">
+      <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
       {editingSession ? (
         <SessionEditor
           key={editingSession.id}
@@ -1031,108 +976,156 @@ export function ParentApp() {
         />
       ) : null}
 
-      <header className="mb-6 flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <Link
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm"
-            href="/"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <p className="text-sm font-black uppercase tracking-wide text-supabase-800">
-              Parent
-            </p>
-            <h1 className="text-3xl font-black text-stone-950 sm:text-5xl">
-              Practice dashboard
-            </h1>
-            <p className="mt-1 font-bold text-stone-600">
-              Goals, approvals, and recent practice
-            </p>
-          </div>
-        </div>
-        <button
-          className={classNames(
-            "min-h-11 rounded-md border px-4 font-black",
-            data.settings.require_parent_approval
-              ? "border-supabase-border bg-supabase-50 text-supabase-800"
-              : "border-stone-200 bg-white text-stone-700",
-          )}
-          onClick={toggleApproval}
-          type="button"
+      <header className="mb-4">
+        <Link
+          aria-label="Back to athlete picker"
+          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-violet-100"
+          href="/"
         >
-          Approval {data.settings.require_parent_approval ? "on" : "off"}
-        </button>
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
       </header>
 
+      <section className="relative mb-5 overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-700 p-6 text-white shadow-xl shadow-violet-200/50 sm:p-8">
+        <div className="absolute -right-12 -top-14 h-44 w-44 rounded-full border-[30px] border-white/10" />
+        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-violet-200">
+              <ShieldCheck className="h-5 w-5" />
+              Softball parent tools
+            </p>
+            <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">
+              Parent Dashboard
+            </h1>
+            <p className="mt-3 max-w-2xl text-lg font-bold text-violet-100">
+              Approve practice, follow summer goals, and keep every softball session organized.
+            </p>
+          </div>
+          <button
+            className={classNames(
+              "flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-4 font-black shadow-sm transition focus:outline-none focus:ring-4 focus:ring-white/20",
+              data.settings.require_parent_approval
+                ? "border-white/30 bg-white text-violet-950 hover:bg-violet-50"
+                : "border-white/20 bg-white/10 text-white hover:bg-white/20",
+            )}
+            onClick={toggleApproval}
+            type="button"
+          >
+            <ShieldCheck className="h-5 w-5" />
+            Approval {data.settings.require_parent_approval ? "on" : "off"}
+          </button>
+        </div>
+      </section>
+
       {notice ? (
-        <div className="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 font-bold text-sky-950">
+        <div className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 font-bold text-sky-950">
           {notice}
         </div>
       ) : null}
 
       {mode === "local" ? (
-        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 font-bold text-amber-950">
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 font-bold text-amber-950">
           Supabase is not connected in this build. Changes are saved only on this device.
         </div>
       ) : null}
 
       <section className="mb-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-wide text-stone-500">Pending</p>
-          <p className="mt-2 text-4xl font-black text-stone-950">{pendingSessions.length}</p>
-        </div>
-        <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-wide text-stone-500">Athletes</p>
-          <p className="mt-2 text-4xl font-black text-stone-950">{data.players.length}</p>
-        </div>
-        <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-wide text-stone-500">Sessions</p>
-          <p className="mt-2 text-4xl font-black text-stone-950">{data.sessions.length}</p>
-        </div>
+        <DashboardStat
+          icon={Clock3}
+          label="Waiting for review"
+          tone="amber"
+          value={String(pendingSessions.length)}
+        />
+        <DashboardStat
+          icon={Target}
+          label="Athletes"
+          tone="violet"
+          value={String(data.players.length)}
+        />
+        <DashboardStat
+          icon={Activity}
+          label="Softball sessions"
+          tone="sky"
+          value={String(data.sessions.length)}
+        />
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-3 text-2xl font-black text-stone-950">Athlete progress</h2>
+        <div className="mb-3 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+            <Gift className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">Summer reward progress</h2>
+            <p className="text-sm font-bold text-slate-500">
+              {SUMMER_REWARD_POINTS.toLocaleString()} points when each athlete reaches the August 9 goal.
+            </p>
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {data.players.map((player) => {
             const weekly = getWeeklyProgress(player, data.sessions, today);
-            const summer = getSummerProgress(player, data.sessions, today);
+            const reward = getSummerRewardProgress(player, data.sessions, today);
             const streak = getMaxStreak(player.id, data.sessions);
             const badges = data.playerBadges.filter((badge) => badge.player_id === player.id);
 
             return (
               <article
-                className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+                className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm"
                 key={player.id}
               >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-2xl font-black text-stone-950">{player.name}</h3>
-                  <div className="flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1 text-sm font-black text-amber-800">
-                    <Medal className="h-4 w-4" />
-                    {badges.length}
+                <div className="bg-gradient-to-r from-violet-600 to-fuchsia-500 p-5 text-white">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl font-black">
+                        {player.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <div>
+                        <h3 className="text-2xl font-black">{player.name}</h3>
+                        <p className="text-sm font-bold text-violet-100">
+                          {reward.met ? "Reward unlocked" : `${reward.remaining} minutes to go`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-sm font-black">
+                      <Medal className="h-4 w-4" />
+                      {badges.length}
+                    </div>
                   </div>
                 </div>
-                <div className="grid gap-4">
+                <div className="grid gap-5 p-5">
                   <div>
-                    <div className="mb-1 flex justify-between text-sm font-black text-stone-600">
-                      <span>Week</span>
+                    <div className="mb-2 flex justify-between text-sm font-black text-slate-600">
+                      <span>This week</span>
                       <span>
                         {weekly.minutes}/{player.weekly_goal_minutes}
                       </span>
                     </div>
-                    <ProgressBar value={weekly.percent} />
+                    <ProgressBar label={`${player.name} weekly progress`} value={weekly.percent} />
                   </div>
                   <div>
-                    <div className="mb-1 flex justify-between text-sm font-black text-stone-600">
-                      <span>Season</span>
+                    <div className="mb-2 flex justify-between text-sm font-black text-slate-600">
+                      <span>Summer reward · Aug 9</span>
                       <span>
-                        {summer.minutes}/{player.summer_goal_minutes}
+                        {reward.minutes}/{reward.goalMinutes}
                       </span>
                     </div>
-                    <ProgressBar tone="blue" value={summer.percent} />
+                    <ProgressBar
+                      label={`${player.name} summer reward progress`}
+                      tone="blue"
+                      value={reward.percent}
+                    />
                   </div>
-                  <p className="font-bold text-stone-600">Current best streak: {streak} days</p>
+                  <div className="flex flex-wrap gap-2 text-sm font-black">
+                    <span className="rounded-full bg-amber-50 px-3 py-1.5 text-amber-800">
+                      🔥 Best streak: {streak} days
+                    </span>
+                    {!reward.met && !reward.ended ? (
+                      <span className="rounded-full bg-sky-50 px-3 py-1.5 text-sky-800">
+                        {reward.daysRemaining} days left
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             );
@@ -1141,10 +1134,14 @@ export function ParentApp() {
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-3 text-2xl font-black text-stone-950">Review</h2>
+        <h2 className="mb-3 flex items-center gap-2 text-2xl font-black text-slate-950">
+          <CalendarCheck className="h-6 w-6 text-violet-600" />
+          Practice review
+        </h2>
         {pendingSessions.length === 0 ? (
-          <div className="rounded-lg border border-stone-200 bg-white p-4 font-bold text-stone-600">
-            No sessions waiting.
+          <div className="flex items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50 p-5 font-bold text-violet-950">
+            <Check className="h-6 w-6 text-violet-600" />
+            All caught up—no sessions are waiting for approval.
           </div>
         ) : (
           <div className="grid gap-3">
@@ -1163,21 +1160,23 @@ export function ParentApp() {
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-3 text-2xl font-black text-stone-950">Recent sessions</h2>
-        <div className="grid gap-2">
+        <h2 className="mb-3 flex items-center gap-2 text-2xl font-black text-slate-950">
+          <Sparkles className="h-6 w-6 text-sky-600" />
+          Recent softball sessions
+        </h2>
+        <div className="grid gap-3">
           {recentSessions.map((session) => {
             const player = data.players.find((candidate) => candidate.id === session.player_id);
-            const sport = data.sports.find((candidate) => candidate.id === session.sport_id);
 
             return (
               <article
-                className="grid gap-3 rounded-lg border border-stone-200 bg-white p-3 shadow-sm sm:grid-cols-[1fr_auto]"
+                className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-sky-200 hover:shadow-md sm:grid-cols-[1fr_auto]"
                 key={session.id}
               >
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-black text-stone-950">
-                      {player?.name ?? "Athlete"} - {sport?.name ?? "Sport"} - {session.practice_type}
+                      {player?.name ?? "Athlete"} - {session.practice_type}
                     </h3>
                     <span
                       className={classNames(
@@ -1199,14 +1198,16 @@ export function ParentApp() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    className="flex h-10 w-10 items-center justify-center rounded-md border border-stone-200 text-stone-700"
+                    aria-label={`Edit ${player?.name ?? "athlete"} session`}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-50"
                     onClick={() => setEditingSession(session)}
                     type="button"
                   >
                     <Edit3 className="h-4 w-4" />
                   </button>
                   <button
-                    className="flex h-10 w-10 items-center justify-center rounded-md border border-rose-200 text-rose-700"
+                    aria-label={`Delete ${player?.name ?? "athlete"} session`}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 text-rose-700 transition hover:bg-rose-50"
                     onClick={() => void deleteSession(session)}
                     type="button"
                   >
@@ -1222,60 +1223,22 @@ export function ParentApp() {
       <section className="mb-6">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-2xl font-black text-stone-950">Sports</h2>
-            <p className="mt-1 font-bold text-stone-600">
-              Starter sports are ready to use. Add a private custom sport here.
-            </p>
+            <h2 className="text-2xl font-black text-slate-950">Athletes and goals</h2>
+            <p className="mt-1 font-bold text-slate-500">Manage softball goals and summer dates.</p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <label>
-              <span className="sr-only">Custom sport name</span>
-              <input
-                aria-label="Custom sport name"
-                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
-                onChange={(event) => setNewSportName(event.target.value)}
-                placeholder="Custom sport"
-                value={newSportName}
-              />
-            </label>
-            <button
-              className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-3 font-black text-white"
-              onClick={() => void addSport()}
-              type="button"
-            >
-              <Plus className="h-4 w-4" />
-              Add sport
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {data.sports.map((sport) => (
-            <span
-              className="rounded-full border border-supabase-border bg-supabase-50 px-3 py-2 font-black text-supabase-800"
-              key={sport.id}
-            >
-              {sport.icon} {sport.name}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-6">
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="text-2xl font-black text-stone-950">Athletes and goals</h2>
           <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
             <label>
               <span className="sr-only">Athlete name</span>
               <input
                 aria-label="Athlete name"
-                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
+                className="min-h-12 w-full rounded-xl border border-slate-200 px-3 font-bold text-slate-950 outline-none focus:ring-4 focus:ring-violet-100"
                 onChange={(event) => setNewPlayerName(event.target.value)}
                 placeholder="Athlete name"
                 value={newPlayerName}
               />
             </label>
             <button
-              className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-3 font-black text-white"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 font-black text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-4 focus:ring-violet-100"
               onClick={addPlayer}
               type="button"
             >
@@ -1288,14 +1251,9 @@ export function ParentApp() {
           {data.players.map((player) => (
             <PlayerSettingsCard
               key={player.id}
-              assignments={data.playerSports.filter(
-                (assignment) => assignment.player_id === player.id,
-              )}
               onDelete={(candidate) => void removePlayer(candidate)}
-              onToggleSport={(candidate, sportId) => void togglePlayerSport(candidate, sportId)}
               onUpdate={(candidate) => void savePlayer(candidate)}
               player={player}
-              sports={data.sports}
             />
           ))}
         </div>
@@ -1304,42 +1262,27 @@ export function ParentApp() {
       <section className="pb-10">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="flex items-center gap-2 text-2xl font-black text-stone-950">
-              <ClipboardList className="h-6 w-6" />
+            <h2 className="flex items-center gap-2 text-2xl font-black text-slate-950">
+              <ClipboardList className="h-6 w-6 text-sky-600" />
               Practice plans
             </h2>
             <p className="mt-1 font-bold text-stone-600">
-              Choose a sport, name the plan, then add drills below.
+              Create softball practice plans and add drills below.
             </p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-[auto_1fr_auto]">
-            <label>
-              <span className="sr-only">Plan sport</span>
-              <select
-                aria-label="Plan sport"
-                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
-                onChange={(event) => setNewPlanSportId(event.target.value)}
-                value={newPlanSportId || data.sports[0]?.id || ""}
-              >
-                {data.sports.map((sport) => (
-                  <option key={sport.id} value={sport.id}>
-                    {sport.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
             <label>
               <span className="sr-only">New plan name</span>
               <input
                 aria-label="New plan name"
-                className="min-h-11 w-full rounded-md border border-stone-200 px-3 font-bold text-stone-950"
+                className="min-h-12 w-full rounded-xl border border-slate-200 px-3 font-bold text-slate-950 outline-none focus:ring-4 focus:ring-sky-100"
                 onChange={(event) => setNewPlanName(event.target.value)}
                 placeholder="Plan name"
                 value={newPlanName}
               />
             </label>
             <button
-              className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-stone-950 px-3 font-black text-white"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 font-black text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-100"
               onClick={() => void addTemplate()}
               type="button"
             >
@@ -1353,12 +1296,12 @@ export function ParentApp() {
             <TemplateCard
               key={template.id}
               onSave={(draft) => void saveTemplate(draft)}
-              sport={data.sports.find((sport) => sport.id === template.sport_id)}
               template={template}
             />
           ))}
         </div>
       </section>
+      </div>
     </main>
   );
 }

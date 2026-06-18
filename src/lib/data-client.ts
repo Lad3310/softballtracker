@@ -160,7 +160,9 @@ export async function deleteInvitationRemote(invitationId: string) {
 }
 
 function mergeQueuedSessions(data: AppData) {
-  const queued = loadQueuedSessions();
+  const queued = loadQueuedSessions().filter(
+    (session) => session.sport_id === SOFTBALL_SPORT_ID,
+  );
   const existingIds = new Set(data.sessions.map((session) => session.id));
 
   return {
@@ -362,7 +364,8 @@ async function ensureFamilyTemplates(supabase: Supabase, familyId: string) {
   const familyTemplates = await supabase
     .from(TABLES.drillTemplates)
     .select("sport_id, practice_type")
-    .eq("family_id", familyId);
+    .eq("family_id", familyId)
+    .eq("sport_id", SOFTBALL_SPORT_ID);
 
   if (familyTemplates.error) {
     throw familyTemplates.error;
@@ -372,6 +375,7 @@ async function ensureFamilyTemplates(supabase: Supabase, familyId: string) {
     .from(TABLES.drillTemplates)
     .select("*")
     .is("family_id", null)
+    .eq("sport_id", SOFTBALL_SPORT_ID)
     .order("practice_type", { ascending: true });
 
   if (globals.error) {
@@ -596,15 +600,20 @@ export async function loadAppData(): Promise<AppDataResult> {
     supabase
       .from(TABLES.sports)
       .select("*")
-      .or(`family_id.is.null,family_id.eq.${family.id}`)
+      .eq("id", SOFTBALL_SPORT_ID)
       .order("display_order", { ascending: true }),
-    supabase.from(TABLES.playerSports).select("*"),
-    supabase.from(TABLES.practiceSessions).select("*").order("created_at", { ascending: false }),
+    supabase.from(TABLES.playerSports).select("*").eq("sport_id", SOFTBALL_SPORT_ID),
+    supabase
+      .from(TABLES.practiceSessions)
+      .select("*")
+      .eq("sport_id", SOFTBALL_SPORT_ID)
+      .order("created_at", { ascending: false }),
     supabase.from(TABLES.practiceSessionDrills).select("*"),
     supabase
       .from(TABLES.drillTemplates)
       .select("*")
       .or(`family_id.is.null,family_id.eq.${family.id}`)
+      .eq("sport_id", SOFTBALL_SPORT_ID)
       .order("practice_type", { ascending: true }),
     supabase.from(TABLES.drillTemplateItems).select("*").order("sort_order", { ascending: true }),
     supabase.from(TABLES.badges).select("*").order("title", { ascending: true }),

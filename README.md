@@ -1,6 +1,6 @@
 # training-app
 
-Invite-only, mobile-first Next.js app for multi-sport child practice logging and parent review/goal tracking.
+Invite-only, mobile-first Next.js app for softball practice logging, training guides, and parent review/goal tracking.
 
 ## 1. Supabase migration SQL
 
@@ -12,10 +12,9 @@ The migration files are:
 - `supabase/migrations/20260604103919_fix_softball_membership_rls_recursion.sql`
 - `supabase/migrations/20260604152546_add_multi_sport_support.sql`
 - `supabase/migrations/20260604201735_invite_only_tracker_access.sql`
-- `supabase/migrations/20260604203614_replace_starter_sports_with_hockey.sql`
 - `supabase/migrations/20260605111942_restrict_tracker_invitations_to_admin.sql`
 
-The migrations create the original practice schema, add Supabase Auth family scoping and RLS, and then add a backward-compatible multi-sport catalog, child-to-sport assignments, starter plans, and generic season badges.
+The migrations create the original practice schema, add Supabase Auth family scoping and RLS, and support softball practice plans, child assignments, and season badges.
 
 training-app is designed to share the existing `summerrewardsapp` Supabase project safely. Its tables are still prefixed with `softball_` for backward compatibility, so they do not collide with the rewards app's existing `families`, `family_members`, `badges`, and other tables.
 
@@ -103,7 +102,7 @@ For a Vercel deployment, add both public Supabase variables to the Vercel projec
 - With approval on, child sessions are `pending` and do not count until approved.
 - With approval off, child sessions are submitted as `approved` with `approved_by = 'auto'`.
 - Offline tolerance is implemented for child practice submits: the session is saved locally immediately, then synced to Supabase when online. Broader parent edits are online-first.
-- Starter sports are Softball and Hockey. A family can add private custom sports, assign sports to each athlete, and create or edit practice plans and drills.
+- The active app is softball-only. Parents can create or edit softball practice plans and drills.
 
 ## `// ASSUMPTION:` List
 
