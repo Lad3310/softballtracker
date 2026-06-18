@@ -4,19 +4,15 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
-  KeyRound,
+  LockKeyhole,
   LogOut,
   Mail,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/lib/supabase";
-import { APP_ADMIN_EMAILS, isAppAdminEmail } from "@/lib/config";
 
-type AuthMethod = "email-link" | "password";
 type AccessStatus = "checking" | "allowed" | "denied";
-
-const TRACKER_LOGIN_EMAIL = APP_ADMIN_EMAILS[0];
 
 function isBrowserSecurityError(error: unknown) {
   const name = error instanceof DOMException ? error.name : "";
@@ -27,7 +23,7 @@ function isBrowserSecurityError(error: unknown) {
 
 function signInErrorMessage(error: unknown) {
   if (isBrowserSecurityError(error)) {
-    return "This browser is blocking secure sign-in storage. Open the HTTPS app link in a normal browser window and allow cookies/site data for this site.";
+    return "This browser is blocking secure sign-in storage. Open the HTTPS app link in a normal browser window and allow cookies or site data for this site.";
   }
 
   return error instanceof Error ? error.message : "Sign-in failed.";
@@ -45,9 +41,7 @@ export function AuthGate({
   showAccountBar?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState<string>(TRACKER_LOGIN_EMAIL);
-  const [password, setPassword] = useState("");
-  const [authMethod, setAuthMethod] = useState<AuthMethod>("password");
+  const [email, setEmail] = useState("");
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
   const [loading, setLoading] = useState(hasSupabaseConfig());
   const [submitting, setSubmitting] = useState(false);
@@ -61,6 +55,41 @@ export function AuthGate({
     }
 
     let mounted = true;
+
+    const hasTrackerAccess = async (activeUser: User) => {
+      const membership = await supabase
+        .from("softball_family_members")
+        .select("id")
+        .eq("user_id", activeUser.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (membership.error) {
+        throw membership.error;
+      }
+
+      if (membership.data) {
+        return true;
+      }
+
+      if (!activeUser.email) {
+        return false;
+      }
+
+      const invitation = await supabase
+        .from("softball_app_invitations")
+        .select("id")
+        .eq("email", activeUser.email.trim().toLowerCase())
+        .is("accepted_at", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (invitation.error) {
+        throw invitation.error;
+      }
+
+      return Boolean(invitation.data);
+    };
 
     const applyUser = async (activeUser: User | null) => {
       if (!mounted) {
@@ -78,14 +107,22 @@ export function AuthGate({
       setUser(activeUser);
       setAccessStatus("checking");
 
-      if (!isAppAdminEmail(activeUser.email)) {
-        setAccessStatus("denied");
-        setLoading(false);
-        return;
-      }
+      try {
+        const allowed = await hasTrackerAccess(activeUser);
 
-      setAccessStatus("allowed");
-      setLoading(false);
+        if (mounted) {
+          setAccessStatus(allowed ? "allowed" : "denied");
+        }
+      } catch (accessError) {
+        if (mounted) {
+          setError(signInErrorMessage(accessError));
+          setAccessStatus("denied");
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
     };
 
     supabase.auth
@@ -129,45 +166,22 @@ export function AuthGate({
     return children;
   }
 
-  const clearFeedback = () => {
-    setError(null);
-    setMessage(null);
-  };
-
-  const chooseAuthMethod = (method: AuthMethod) => {
-    setAuthMethod(method);
-    clearFeedback();
-  };
-
-  const validateTrackerEmail = () => {
-    if (isAppAdminEmail(email)) {
-      return true;
-    }
-
-    setError(`This tracker only accepts ${TRACKER_LOGIN_EMAIL}.`);
-    return false;
-  };
-
   const signInWithEmailLink = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
-    clearFeedback();
-
-    if (!validateTrackerEmail()) {
-      return;
-    }
-
+    setError(null);
+    setMessage(null);
     setSubmitting(true);
 
     let signInError: unknown = null;
 
     try {
       const result = await supabase.auth.signInWithOtp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         options: {
           emailRedirectTo: getAuthRedirectUrl(),
-          shouldCreateUser: false,
+          shouldCreateUser: true,
         },
       });
       signInError = result.error;
@@ -182,38 +196,7 @@ export function AuthGate({
       return;
     }
 
-    setMessage(
-      "Check your email for the one-time sign-in link. It will return you to this app.",
-    );
-  };
-
-  const submitPassword = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    clearFeedback();
-
-    if (!validateTrackerEmail()) {
-      return;
-    }
-
-    setSubmitting(true);
-
-    let signInError: unknown = null;
-
-    try {
-      const result = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      signInError = result.error;
-    } catch (caught) {
-      signInError = caught;
-    }
-
-    setSubmitting(false);
-
-    if (signInError) {
-      setError(signInErrorMessage(signInError));
-    }
+    setMessage(`We sent a secure sign-in link to ${email.trim()}.`);
   };
 
   const signOut = async () => {
@@ -224,11 +207,11 @@ export function AuthGate({
 
   if (loading || (user && accessStatus === "checking")) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-stone-50 p-4">
-        <section className="rounded-lg border border-stone-200 bg-white p-6 text-center shadow-sm">
-          <Sparkles className="mx-auto h-10 w-10 animate-pulse text-supabase-700" />
-          <p className="mt-3 text-xl font-black text-stone-950">
-            Checking tracker access.
+      <main className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-violet-50 via-white to-sky-50 p-4">
+        <section className="rounded-3xl border border-violet-100 bg-white px-8 py-7 text-center shadow-xl shadow-violet-200/40">
+          <Sparkles className="mx-auto h-9 w-9 animate-pulse text-violet-600" />
+          <p className="mt-3 text-lg font-black text-slate-950">
+            Opening your tracker…
           </p>
         </section>
       </main>
@@ -237,118 +220,82 @@ export function AuthGate({
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-6">
-        <section className="rounded-lg border border-supabase-border bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-supabase text-stone-950">
-              <ShieldCheck className="h-7 w-7" />
-            </span>
-            <div>
-              <p className="text-sm font-black uppercase tracking-wide text-supabase-800">
-                Parent sign-in
-              </p>
-              <h1 className="text-2xl font-black text-stone-950">Open your family tracker</h1>
-            </div>
-          </div>
+      <main className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-violet-50 via-white to-sky-50 px-4 py-8">
+        <div
+          aria-hidden="true"
+          className="absolute -left-24 top-10 h-64 w-64 rounded-full bg-fuchsia-200/40 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-sky-200/50 blur-3xl"
+        />
 
-          <p className="mt-5 text-sm font-bold text-stone-600">
-            Sign in with the saved family email and password.
+        <section className="relative w-full max-w-md rounded-[2rem] border border-violet-100 bg-white/95 p-6 shadow-xl shadow-violet-200/40 backdrop-blur sm:p-8">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white shadow-lg shadow-violet-200">
+            <Sparkles className="h-7 w-7" />
+          </span>
+
+          <p className="mt-6 text-sm font-black uppercase tracking-[0.16em] text-violet-600">
+            Family training tracker
+          </p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+            Welcome back
+          </h1>
+          <p className="mt-3 text-base font-medium leading-7 text-slate-600">
+            Enter the email that received your family invite. We’ll send a
+            secure link—no password needed.
           </p>
 
-          <div
-            aria-label="Sign-in method"
-            className="mt-3 grid grid-cols-2 rounded-lg bg-stone-100 p-1"
-          >
-            <button
-              aria-pressed={authMethod === "password"}
-              className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-black transition ${
-                authMethod === "password"
-                  ? "bg-white text-stone-950 shadow-sm"
-                  : "text-stone-500 hover:text-stone-800"
-              }`}
-              onClick={() => chooseAuthMethod("password")}
-              type="button"
-            >
-              <KeyRound className="h-4 w-4" />
-              Password
-            </button>
-            <button
-              aria-pressed={authMethod === "email-link"}
-              className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-black transition ${
-                authMethod === "email-link"
-                  ? "bg-white text-stone-950 shadow-sm"
-                  : "text-stone-500 hover:text-stone-800"
-              }`}
-              onClick={() => chooseAuthMethod("email-link")}
-              type="button"
-            >
-              <Mail className="h-4 w-4" />
-              Email link
-            </button>
-          </div>
-
-          <form
-            className="mt-4 grid gap-3"
-            onSubmit={
-              authMethod === "email-link"
-                ? signInWithEmailLink
-                : submitPassword
-            }
-          >
-            <label className="grid gap-2 text-sm font-black text-stone-600">
-              Email
+          <form className="mt-7 grid gap-4" onSubmit={signInWithEmailLink}>
+            <label className="grid gap-2 text-sm font-black text-slate-700">
+              Email address
               <input
                 autoCapitalize="none"
-                autoComplete="username"
-                className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
+                autoComplete="email"
+                autoFocus
+                className="min-h-14 rounded-2xl border border-slate-200 bg-white px-4 text-base font-bold text-slate-950 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
                 name="email"
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder={TRACKER_LOGIN_EMAIL}
+                placeholder="you@example.com"
                 required
                 type="email"
                 value={email}
               />
             </label>
-            {authMethod === "password" ? (
-              <label className="grid gap-2 text-sm font-black text-stone-600">
-                Password
-                <input
-                  autoComplete="current-password"
-                  className="min-h-12 rounded-lg border border-stone-200 px-3 text-base font-bold text-stone-950 outline-none focus:ring-4 focus:ring-supabase-100"
-                  name="password"
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  type="password"
-                  value={password}
-                />
-              </label>
-            ) : null}
             <button
-              className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-supabase-border bg-supabase px-4 font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 font-black text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-violet-200 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={submitting}
               type="submit"
             >
-              {authMethod === "email-link" ? (
-                <Mail className="h-5 w-5" />
-              ) : (
-                <KeyRound className="h-5 w-5" />
-              )}
-              {submitting
-                ? authMethod === "email-link"
-                  ? "Sending link"
-                  : "Signing in"
-                : authMethod === "email-link"
-                  ? "Send sign-in link"
-                  : "Sign in"}
+              <Mail className="h-5 w-5" />
+              {submitting ? "Sending link…" : "Email me a sign-in link"}
             </button>
           </form>
 
-          {message ? <p className="mt-4 font-bold text-supabase-800">{message}</p> : null}
-          {error ? <p className="mt-4 font-bold text-rose-700">{error}</p> : null}
-          <p className="mt-5 text-sm font-medium text-stone-500">
-            This tracker currently only accepts {TRACKER_LOGIN_EMAIL}. Kids can
-            use the athlete cards after a parent signs in on this device.
-          </p>
+          {message ? (
+            <p
+              className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold leading-6 text-sky-900"
+              role="status"
+            >
+              {message} You can close this page after it arrives.
+            </p>
+          ) : null}
+          {error ? (
+            <p
+              className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold leading-6 text-rose-800"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <div className="mt-6 flex items-start gap-3 border-t border-slate-100 pt-5 text-sm leading-6 text-slate-500">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-violet-500" />
+            <p>
+              Each family has its own private workspace. Kids can use their
+              athlete cards after a parent signs in on this device.
+            </p>
+          </div>
         </section>
       </main>
     );
@@ -356,26 +303,33 @@ export function AuthGate({
 
   if (accessStatus === "denied") {
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-6">
-        <section className="rounded-lg border border-amber-300 bg-white p-5 text-center shadow-sm">
-          <ShieldCheck className="mx-auto h-12 w-12 text-amber-600" />
-          <p className="mt-4 text-sm font-black uppercase tracking-wide text-amber-700">
-            Private tracker
+      <main className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-violet-50 via-white to-sky-50 px-4 py-8">
+        <section className="w-full max-w-md rounded-[2rem] border border-amber-200 bg-white p-7 text-center shadow-xl shadow-amber-100/60">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+            <LockKeyhole className="h-7 w-7" />
+          </span>
+          <p className="mt-5 text-sm font-black uppercase tracking-[0.16em] text-amber-700">
+            Invitation needed
           </p>
-          <h1 className="mt-1 text-3xl font-black text-stone-950">
-            Use the family tracker email
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+            This email isn’t connected yet
           </h1>
-          <p className="mt-3 font-bold text-stone-600">
-            This app currently only opens for {TRACKER_LOGIN_EMAIL}. Sign out
-            and use that saved account on this device.
+          <p className="mt-3 font-medium leading-7 text-slate-600">
+            Ask the person who shared the tracker to invite {user.email}, then
+            try the sign-in link again.
           </p>
+          {error ? (
+            <p className="mt-4 text-sm font-bold text-rose-700" role="alert">
+              {error}
+            </p>
+          ) : null}
           <button
-            className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-stone-200 px-4 font-black text-stone-700"
+            className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 font-black text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-violet-100"
             onClick={signOut}
             type="button"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            Use another email
           </button>
         </section>
       </main>
@@ -385,11 +339,11 @@ export function AuthGate({
   return (
     <>
       {showAccountBar ? (
-        <div className="border-b border-stone-200 bg-white/80 px-4 py-2 backdrop-blur">
+        <div className="border-b border-violet-100 bg-white/85 px-4 py-2 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-            <p className="truncate text-sm font-bold text-stone-600">{user.email}</p>
+            <p className="truncate text-sm font-bold text-slate-600">{user.email}</p>
             <button
-              className="flex min-h-10 items-center gap-2 rounded-md border border-stone-200 px-3 text-sm font-black text-stone-700"
+              className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-black text-slate-700 transition hover:bg-violet-50 focus:outline-none focus:ring-4 focus:ring-violet-100"
               onClick={signOut}
               type="button"
             >
