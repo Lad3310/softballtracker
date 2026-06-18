@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "training-app",
-  description: "Invite-only training logs, practice plans, and parent goal tracking.",
+  title: "Summer Training Club",
+  description:
+    "Kid-friendly softball practice guides, pitching and hitting drills, summer goals, and practice logs.",
 };
 
 export default function RootLayout({

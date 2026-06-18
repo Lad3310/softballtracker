@@ -5,21 +5,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
-  CalendarDays,
   Check,
   ChevronRight,
   Clock,
+  CircleDot,
   Dumbbell,
   Frown,
+  Gift,
   Heart,
   LayoutDashboard,
   Medal,
+  Rocket,
   Sparkles,
+  Star,
   Trophy,
   WifiOff,
 } from "lucide-react";
 import { HittingTrainingModule } from "@/components/hitting-training-module";
-import { FEELINGS, MINUTE_PRESETS } from "@/lib/config";
+import { PitchingTrainingModule } from "@/components/pitching-training-module";
+import { FEELINGS, MINUTE_PRESETS, SUMMER_REWARD_POINTS } from "@/lib/config";
 import { parsePositiveIntegerInput } from "@/lib/input";
 import {
   createPracticeSessionFromInput,
@@ -33,10 +37,10 @@ import { getPlayerBadgeDetails } from "@/lib/badges";
 import {
   getPendingMinutes,
   getRejectedCount,
-  getSummerProgress,
+  getSummerRewardProgress,
   getWeeklyProgress,
 } from "@/lib/progress";
-import { getAppDateKey } from "@/lib/time";
+import { formatShortDate, getAppDateKey } from "@/lib/time";
 import type {
   AppData,
   AppDataResult,
@@ -49,7 +53,7 @@ import type {
   Sport,
 } from "@/lib/types";
 
-type Screen = "picker" | "dashboard" | "log" | "lesson";
+type Screen = "picker" | "dashboard" | "log" | "hitting" | "pitching";
 
 function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -71,9 +75,24 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" | "blue" }) {
+function ProgressBar({
+  value,
+  tone = "green",
+  label = "Progress",
+}: {
+  value: number;
+  tone?: "green" | "blue";
+  label?: string;
+}) {
   return (
-    <div className="h-4 w-full overflow-hidden rounded-full bg-stone-200">
+    <div
+      aria-label={label}
+      aria-valuemax={100}
+      aria-valuemin={0}
+      aria-valuenow={Math.min(100, Math.max(0, value))}
+      className="h-4 w-full overflow-hidden rounded-full bg-stone-200"
+      role="progressbar"
+    >
       <div
         className={classNames(
           "h-full rounded-full transition-all",
@@ -82,6 +101,114 @@ function ProgressBar({ value, tone = "green" }: { value: number; tone?: "green" 
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
+  );
+}
+
+function SummerRewardCard({
+  player,
+  sessions,
+  compact = false,
+}: {
+  player: Player;
+  sessions: PracticeSession[];
+  compact?: boolean;
+}) {
+  const reward = getSummerRewardProgress(player, sessions, getAppDateKey());
+
+  if (compact) {
+    return (
+      <div className="mt-6">
+        <div className="mb-2 flex items-center justify-between gap-3 text-sm font-black text-slate-600">
+          <span className="flex items-center gap-1.5">
+            <Gift className="h-4 w-4 text-violet-600" />
+            {SUMMER_REWARD_POINTS.toLocaleString()}-point goal
+          </span>
+          <span>{reward.percent}%</span>
+        </div>
+        <div
+          aria-label={`${player.name}'s summer reward progress`}
+          aria-valuemax={reward.goalMinutes}
+          aria-valuemin={0}
+          aria-valuenow={Math.min(reward.minutes, reward.goalMinutes)}
+          className="h-3 overflow-hidden rounded-full bg-slate-100"
+          role="progressbar"
+        >
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400 transition-all"
+            style={{ width: `${reward.percent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-sm font-bold text-slate-500">
+          {reward.minutes} of {reward.goalMinutes} minutes
+        </p>
+      </div>
+    );
+  }
+
+  const countdownText = reward.met
+    ? "Goal reached"
+    : reward.ended
+      ? `Goal day was ${formatShortDate(reward.endDate)}`
+      : reward.daysRemaining === 0
+        ? "Goal day is today"
+        : `${reward.daysRemaining} days to Aug 9`;
+
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-violet-600 via-fuchsia-500 to-orange-400 p-6 text-white shadow-xl shadow-fuchsia-200/50 sm:p-8">
+      <div className="absolute -right-12 -top-14 h-44 w-44 rounded-full border-[30px] border-white/10" />
+      <div className="relative">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 shadow-inner">
+              <Gift className="h-8 w-8" />
+            </span>
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-violet-100">
+                Summer reward challenge
+              </p>
+              <h2 className="mt-1 text-3xl font-black sm:text-4xl">
+                {SUMMER_REWARD_POINTS.toLocaleString()} points
+              </h2>
+            </div>
+          </div>
+          <span className="rounded-full bg-slate-950/20 px-3 py-1.5 text-sm font-black text-white/90 backdrop-blur">
+            {countdownText}
+          </span>
+        </div>
+
+        <div className="mt-7 flex items-end justify-between gap-4">
+          <p className="text-xl font-black sm:text-2xl">
+            {reward.met ? "You unlocked it!" : `${reward.remaining} minutes to go`}
+          </p>
+          <p className="text-sm font-black text-white/90">
+            {reward.minutes} / {reward.goalMinutes} min
+          </p>
+        </div>
+        <div
+          aria-label={`${player.name}'s summer reward progress`}
+          aria-valuemax={reward.goalMinutes}
+          aria-valuemin={0}
+          aria-valuenow={Math.min(reward.minutes, reward.goalMinutes)}
+          className="mt-3 h-6 overflow-hidden rounded-full border-4 border-white/20 bg-slate-950/20 shadow-inner"
+          role="progressbar"
+        >
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-amber-200 to-yellow-300 transition-all"
+            style={{ width: `${reward.percent}%` }}
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between text-xs font-black uppercase tracking-wide text-white/80">
+          <span>Start</span>
+          <span>{reward.percent}%</span>
+          <span>Reward</span>
+        </div>
+
+        <p className="mt-5 max-w-2xl rounded-2xl bg-white/15 px-4 py-3 text-sm font-bold text-white/95 backdrop-blur">
+          When the bar is full, a grown-up will add {SUMMER_REWARD_POINTS.toLocaleString()} points
+          to the Family Rewards app. Approved practice minutes count toward the goal.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -114,92 +241,88 @@ function PlayerPicker({
   data,
   mode,
   onOpenHitting,
+  onOpenPitching,
   onPickPlayer,
 }: {
   data: AppData;
   mode: AppDataResult["mode"];
   onOpenHitting: () => void;
+  onOpenPitching: () => void;
   onPickPlayer: (playerId: string) => void;
 }) {
-  const pendingCount = data.sessions.filter((session) => session.status === "pending").length;
-
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-4 py-4 sm:px-6">
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <main className="min-h-dvh bg-[radial-gradient(circle_at_top_left,_#ede9fe_0,_#f8fafc_38%,_#f8fafc_100%)]">
+      <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-4 py-5 sm:px-6 sm:py-8">
+      <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-supabase-800">
-            training-app
+          <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-violet-600">
+            <Star className="h-5 w-5 fill-current" />
+            Summer Training Club
           </p>
-          <h1 className="mt-1 text-3xl font-black text-stone-950 sm:text-5xl">
-            Pick your athlete
+          <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">
+            Who&apos;s practicing?
           </h1>
+          <p className="mt-2 text-lg font-bold text-slate-600">
+            Pick your name, then choose your next move.
+          </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <button
-            className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-4 text-base font-black text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
-            onClick={onOpenHitting}
-            type="button"
-          >
-            <BookOpen className="h-5 w-5" />
-            Hitting Guide
-          </button>
-          <Link
-            className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-supabase-border bg-supabase px-4 text-base font-black text-stone-950 shadow-sm transition hover:bg-supabase-hover focus:outline-none focus:ring-4 focus:ring-supabase-100"
-            href="/parent"
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            Dashboard
-          </Link>
-        </div>
+        <Link
+          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-violet-100"
+          href="/parent"
+        >
+          <LayoutDashboard className="h-5 w-5" />
+          Grown-up Dashboard
+        </Link>
       </header>
 
       <div className="mb-4">
         <StatusNote mode={mode} sessions={data.sessions} />
       </div>
 
-      <section className="mb-4 rounded-lg border border-supabase-border bg-supabase-50 p-4 shadow-sm">
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <LayoutDashboard className="h-6 w-6 text-supabase-800" />
-              <h2 className="text-xl font-black text-stone-950">Family dashboard</h2>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wide text-stone-500">
-                  Pending
-                </p>
-                <p className="text-2xl font-black text-stone-950">{pendingCount}</p>
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-wide text-stone-500">
-                  Athletes
-                </p>
-                <p className="text-2xl font-black text-stone-950">{data.players.length}</p>
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-wide text-stone-500">
-                  Sessions
-                </p>
-                <p className="text-2xl font-black text-stone-950">{data.sessions.length}</p>
-              </div>
-            </div>
-          </div>
-          <Link
-            className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-supabase-border bg-white px-4 font-black text-supabase-800 shadow-sm transition hover:bg-supabase-100"
-            href="/parent"
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            Open Dashboard
-          </Link>
-        </div>
+      <section aria-label="Training guides" className="mb-5 grid gap-3 sm:grid-cols-2">
+        <button
+          className="group flex min-h-24 items-center justify-between rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-left text-white shadow-lg shadow-indigo-200/50 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-200"
+          onClick={onOpenPitching}
+          type="button"
+        >
+          <span className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+              <CircleDot className="h-7 w-7" />
+            </span>
+            <span>
+              <span className="block text-sm font-black uppercase tracking-wide text-indigo-100">
+                New
+              </span>
+              <span className="block text-2xl font-black">Pitching Guide</span>
+            </span>
+          </span>
+          <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
+        </button>
+        <button
+          className="group flex min-h-24 items-center justify-between rounded-3xl bg-gradient-to-br from-cyan-500 to-sky-500 p-5 text-left text-white shadow-lg shadow-sky-200/50 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-sky-200"
+          onClick={onOpenHitting}
+          type="button"
+        >
+          <span className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+              <BookOpen className="h-7 w-7" />
+            </span>
+            <span>
+              <span className="block text-sm font-black uppercase tracking-wide text-sky-100">
+                Learn & practice
+              </span>
+              <span className="block text-2xl font-black">Hitting Guide</span>
+            </span>
+          </span>
+          <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
+        </button>
       </section>
 
       {data.players.length === 0 ? (
-        <section className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-white p-8 text-center">
-          <Trophy className="mb-4 h-12 w-12 text-supabase-700" />
-          <h2 className="text-2xl font-black text-stone-950">Ready for athletes</h2>
-          <p className="mt-2 max-w-md text-lg font-medium text-stone-600">
+        <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center">
+          <Trophy className="mb-4 h-12 w-12 text-violet-600" />
+          <h2 className="text-2xl font-black text-slate-950">Ready for athletes</h2>
+          <p className="mt-2 max-w-md text-lg font-medium text-slate-600">
             Ask a grown-up to add athlete cards.
           </p>
         </section>
@@ -216,37 +339,40 @@ function PlayerPicker({
 
             return (
               <button
-                className="min-h-44 rounded-lg border border-stone-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-supabase-border hover:shadow-md focus:outline-none focus:ring-4 focus:ring-supabase-100"
+                className="group min-h-64 rounded-[2rem] border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/70 focus:outline-none focus:ring-4 focus:ring-violet-100"
                 key={player.id}
                 onClick={() => onPickPlayer(player.id)}
                 type="button"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-4xl font-black text-stone-950">{player.name}</h2>
-                    <p className="mt-1 text-base font-bold text-stone-500">
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 text-3xl font-black text-violet-700">
+                      {player.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div>
+                    <h2 className="text-4xl font-black text-slate-950">{player.name}</h2>
+                    <p className="mt-1 text-base font-bold text-slate-500">
                       {sportNames.length > 0 ? sportNames.join(", ") : "No sports assigned yet"}
                     </p>
+                    </div>
                   </div>
-                  <ChevronRight className="mt-2 h-7 w-7 text-supabase-700" />
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-violet-600 transition group-hover:translate-x-1 group-hover:bg-violet-50">
+                    <ChevronRight className="h-6 w-6" />
+                  </span>
                 </div>
-                <div className="mt-8">
-                  <div className="mb-2 flex items-center justify-between text-sm font-black text-stone-600">
-                    <span>This week</span>
-                    <span>{weekly.minutes} min</span>
-                  </div>
-                  <ProgressBar value={weekly.percent} />
-                  {pendingMinutes > 0 ? (
-                    <p className="mt-3 text-sm font-bold text-sky-700">
-                      {pendingMinutes} minutes waiting
-                    </p>
-                  ) : null}
+                <SummerRewardCard compact player={player} sessions={data.sessions} />
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-black text-slate-600">
+                  <span>{weekly.minutes} minutes this week</span>
+                  <span className="text-violet-700">
+                    {pendingMinutes > 0 ? `${pendingMinutes} waiting` : "Tap to open"}
+                  </span>
                 </div>
               </button>
             );
           })}
         </section>
       )}
+      </div>
     </main>
   );
 }
@@ -292,6 +418,7 @@ function PlayerDashboard({
   message,
   onBack,
   onOpenHitting,
+  onOpenPitching,
   onLogPractice,
 }: {
   data: AppData;
@@ -300,126 +427,147 @@ function PlayerDashboard({
   message: string | null;
   onBack: () => void;
   onOpenHitting: () => void;
+  onOpenPitching: () => void;
   onLogPractice: () => void;
 }) {
   const today = getAppDateKey();
   const weekly = getWeeklyProgress(player, data.sessions, today);
-  const summer = getSummerProgress(player, data.sessions, today);
   const pendingMinutes = getPendingMinutes(data.sessions, player.id);
   const rejectedCount = getRejectedCount(data.sessions, player.id);
 
   // ASSUMPTION: Ages are not confirmed, so kid-facing copy stays short with oversized controls for younger elementary readers.
   // ASSUMPTION: Rejected sessions do not interrupt the child flow; the dashboard only says they need another try.
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-4 py-4 sm:px-6">
+    <main className="min-h-dvh bg-[radial-gradient(circle_at_top_left,_#ede9fe_0,_#f8fafc_38%,_#f8fafc_100%)]">
+      <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-4 py-4 sm:px-6 sm:py-6">
       <header className="mb-5 flex items-center justify-between gap-3">
         <button
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm"
+          aria-label="Choose a different athlete"
+          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-violet-100"
           onClick={onBack}
           type="button"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <Link
-          className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-supabase-border bg-supabase px-3 font-black text-stone-950 shadow-sm"
+          className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-violet-100"
           href="/parent"
         >
           <LayoutDashboard className="h-5 w-5" />
-          Dashboard
+          Grown-up Dashboard
         </Link>
       </header>
 
-      <section className="rounded-lg border border-supabase-border bg-supabase p-5 text-stone-950 shadow-sm">
-        <p className="text-base font-black uppercase tracking-wide text-stone-800">
-          Nice work
+      <section className="rounded-[2rem] border border-violet-100 bg-white p-6 shadow-sm sm:p-8">
+        <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.16em] text-violet-600">
+          <Rocket className="h-5 w-5" />
+          Your practice home
         </p>
-        <h1 className="mt-1 text-4xl font-black sm:text-6xl">{player.name}</h1>
-        {message ? <p className="mt-3 text-lg font-bold text-stone-900">{message}</p> : null}
+        <h1 className="mt-2 text-5xl font-black tracking-tight text-slate-950 sm:text-7xl">
+          Hi, {player.name}!
+        </h1>
+        <p className="mt-3 max-w-2xl text-lg font-bold text-slate-600">
+          Ready for a few strong minutes? Every practice moves your summer bar.
+        </p>
+        {message ? (
+          <p className="mt-5 rounded-2xl bg-emerald-50 px-4 py-3 text-lg font-black text-emerald-900">
+            {message}
+          </p>
+        ) : null}
       </section>
 
       <div className="mt-4">
         <StatusNote mode={mode} sessions={data.sessions} />
       </div>
 
-      <section className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Clock className="h-7 w-7 text-supabase-700" />
-            <h2 className="text-xl font-black text-stone-950">This week</h2>
-          </div>
-          <p className="mt-5 text-3xl font-black text-stone-950">
-            You practiced {weekly.minutes} minutes this week.
-          </p>
-          <p className="mt-2 text-lg font-bold text-stone-600">
-            {weekly.met
-              ? "Goal met. Nice work."
-              : `You need ${weekly.remaining} more minutes this week.`}
-          </p>
-          <div className="mt-5">
-            <ProgressBar value={weekly.percent} />
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <CalendarDays className="h-7 w-7 text-sky-600" />
-            <h2 className="text-xl font-black text-stone-950">Season</h2>
-          </div>
-          <p className="mt-5 text-3xl font-black text-stone-950">
-            You practiced {summer.minutes} minutes this season.
-          </p>
-          <p className="mt-2 text-lg font-bold text-stone-600">
-            {summer.met
-              ? "Season goal complete."
-              : `You need ${summer.remaining} more minutes for your season goal.`}
-          </p>
-          <p className="mt-2 text-base font-bold text-sky-700">
-            {summer.met
-              ? "You are across the finish line."
-              : `${summer.averageNeededPerWeek} minutes per week keeps you moving.`}
-          </p>
-          <div className="mt-5">
-            <ProgressBar tone="blue" value={summer.percent} />
-          </div>
-        </div>
+      <section className="mt-4">
+        <SummerRewardCard player={player} sessions={data.sessions} />
       </section>
 
-      {pendingMinutes > 0 || rejectedCount > 0 ? (
-        <section className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-4">
-          <p className="text-lg font-black text-sky-950">
+      <section className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700">
+              <Clock className="h-6 w-6" />
+            </span>
+            <h2 className="text-xl font-black text-slate-950">This week</h2>
+          </div>
+          <p className="mt-5 text-4xl font-black text-slate-950">
+            {weekly.minutes} minutes
+          </p>
+          <p className="mt-2 text-lg font-bold text-slate-600">
+            {weekly.met
+              ? "Weekly goal crushed. Nice work!"
+              : `${weekly.remaining} more minutes reaches your weekly goal.`}
+          </p>
+          <div className="mt-5">
+            <ProgressBar label="Weekly practice progress" value={weekly.percent} />
+          </div>
+        </div>
+        <div className="rounded-[2rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-sm sm:p-6">
+          <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">
+            Practice status
+          </p>
+          <p className="mt-3 text-2xl font-black">
             {pendingMinutes > 0
               ? `${pendingMinutes} minutes waiting for a grown-up to approve.`
-              : "Nothing waiting right now."}
+              : "All caught up!"}
           </p>
           {rejectedCount > 0 ? (
-            <p className="mt-1 text-base font-bold text-sky-800">
+            <p className="mt-3 text-sm font-bold text-amber-200">
               {rejectedCount} practice {rejectedCount === 1 ? "needs" : "need"} another try.
             </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      <section className="mt-4">
-        <BadgeStrip data={data} player={player} />
+          ) : (
+            <p className="mt-3 text-sm font-bold text-slate-300">
+              Approved minutes fill the summer reward bar.
+            </p>
+          )}
+        </div>
       </section>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <section aria-label="What do you want to do?" className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <button
-          className="flex min-h-16 w-full items-center justify-center gap-3 rounded-lg border border-sky-300 bg-sky-50 px-5 text-xl font-black text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
-          onClick={onOpenHitting}
-          type="button"
-        >
-          <BookOpen className="h-7 w-7" />
-          Hitting Guide
-        </button>
-        <button
-          className="flex min-h-16 w-full items-center justify-center gap-3 rounded-lg bg-stone-950 px-5 text-xl font-black text-white shadow-sm transition hover:bg-stone-800 focus:outline-none focus:ring-4 focus:ring-stone-300"
+          className="group flex min-h-24 w-full items-center justify-between rounded-3xl bg-slate-950 px-5 text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-violet-700 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-violet-200 sm:col-span-2 lg:col-span-1"
           onClick={onLogPractice}
           type="button"
         >
-          <Dumbbell className="h-7 w-7" />
-          Log Practice
+          <span className="flex items-center gap-3">
+            <Dumbbell className="h-8 w-8" />
+            <span className="text-2xl font-black">Log Practice</span>
+          </span>
+          <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
         </button>
+        <button
+          className="group flex min-h-24 w-full items-center justify-between rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 px-5 text-left text-white shadow-lg shadow-indigo-200/50 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-indigo-200"
+          onClick={onOpenPitching}
+          type="button"
+        >
+          <span className="flex items-center gap-3">
+            <CircleDot className="h-8 w-8" />
+            <span className="text-2xl font-black">Pitching</span>
+          </span>
+          <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
+        </button>
+        <button
+          className="group flex min-h-24 w-full items-center justify-between rounded-3xl bg-gradient-to-br from-cyan-500 to-sky-500 px-5 text-left text-white shadow-lg shadow-sky-200/50 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-sky-200"
+          onClick={onOpenHitting}
+          type="button"
+        >
+          <span className="flex items-center gap-3">
+            <BookOpen className="h-8 w-8" />
+            <span className="text-2xl font-black">Hitting</span>
+          </span>
+          <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
+        </button>
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-3 flex items-center gap-2 px-1">
+          <Medal className="h-6 w-6 text-amber-500" />
+          <h2 className="text-xl font-black text-slate-950">Trophy shelf</h2>
+        </div>
+        <BadgeStrip data={data} player={player} />
+      </section>
       </div>
     </main>
   );
@@ -442,8 +590,16 @@ function QuickLogFlow({
   onCancel: () => void;
   onSubmit: (input: LogSessionInput) => void;
 }) {
-  const [step, setStep] = useState<"sport" | "type" | "minutes" | "drills">("sport");
-  const [sportId, setSportId] = useState<string | null>(null);
+  const availableSports = sports.filter((sport) =>
+    playerSports.some(
+      (assignment) => assignment.player_id === player.id && assignment.sport_id === sport.id,
+    ),
+  );
+  const onlySport = availableSports.length === 1 ? availableSports[0] : null;
+  const [step, setStep] = useState<"sport" | "type" | "minutes" | "drills">(
+    onlySport ? "type" : "sport",
+  );
+  const [sportId, setSportId] = useState<string | null>(onlySport?.id ?? null);
   const [practiceType, setPracticeType] = useState<string | null>(null);
   const [minutes, setMinutes] = useState<number | null>(null);
   const [customMinutesInput, setCustomMinutesInput] = useState("");
@@ -453,11 +609,6 @@ function QuickLogFlow({
   const [hittingSide, setHittingSide] = useState<HittingSide | null>(null);
   const [sessionDate, setSessionDate] = useState(() => getAppDateKey());
 
-  const availableSports = sports.filter((sport) =>
-    playerSports.some(
-      (assignment) => assignment.player_id === player.id && assignment.sport_id === sport.id,
-    ),
-  );
   const selectedSport = sports.find((sport) => sport.id === sportId) ?? null;
   const availableTemplates = templates.filter((template) => template.sport_id === sportId);
   const customMinutes = parsePositiveIntegerInput(customMinutesInput);
@@ -975,9 +1126,21 @@ export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen }
   }
 
   if (screen === "picker" || !selectedPlayer) {
-    if (screen === "lesson") {
+    if (screen === "hitting") {
       return (
         <HittingTrainingModule
+          data={result.data}
+          onBack={() => setScreen("picker")}
+          onSelectPlayer={(playerId) => setSelectedPlayerId(playerId)}
+          onSubmit={handleSubmit}
+          selectedPlayer={selectedPlayer}
+        />
+      );
+    }
+
+    if (screen === "pitching") {
+      return (
+        <PitchingTrainingModule
           data={result.data}
           onBack={() => setScreen("picker")}
           onSelectPlayer={(playerId) => setSelectedPlayerId(playerId)}
@@ -994,7 +1157,12 @@ export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen }
         onOpenHitting={() => {
           setSelectedPlayerId(result.data.players[0]?.id ?? null);
           setMessage(null);
-          setScreen("lesson");
+          setScreen("hitting");
+        }}
+        onOpenPitching={() => {
+          setSelectedPlayerId(result.data.players[0]?.id ?? null);
+          setMessage(null);
+          setScreen("pitching");
         }}
         onPickPlayer={(playerId) => {
           setSelectedPlayerId(playerId);
@@ -1005,9 +1173,21 @@ export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen }
     );
   }
 
-  if (screen === "lesson") {
+  if (screen === "hitting") {
     return (
       <HittingTrainingModule
+        data={result.data}
+        onBack={() => setScreen("dashboard")}
+        onSelectPlayer={(playerId) => setSelectedPlayerId(playerId)}
+        onSubmit={handleSubmit}
+        selectedPlayer={selectedPlayer}
+      />
+    );
+  }
+
+  if (screen === "pitching") {
+    return (
+      <PitchingTrainingModule
         data={result.data}
         onBack={() => setScreen("dashboard")}
         onSelectPlayer={(playerId) => setSelectedPlayerId(playerId)}
@@ -1040,7 +1220,8 @@ export function HomeApp({ initialScreen = "picker" }: { initialScreen?: Screen }
         setScreen("picker");
         setSelectedPlayerId(null);
       }}
-      onOpenHitting={() => setScreen("lesson")}
+      onOpenHitting={() => setScreen("hitting")}
+      onOpenPitching={() => setScreen("pitching")}
       onLogPractice={() => setScreen("log")}
       player={selectedPlayer}
     />

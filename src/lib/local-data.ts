@@ -72,6 +72,19 @@ const TEMPLATE_SEEDS = [
     ],
   },
   {
+    id: "template-pitching",
+    sport_id: SOFTBALL_SPORT_ID,
+    name: "Pitching practice",
+    practice_type: "Pitching Practice",
+    items: [
+      "Power-Line Walk",
+      "Power-K Freeze",
+      "Walk-Through Pitch",
+      "Three-Zone Target Game",
+      "Finish & Field",
+    ],
+  },
+  {
     id: "template-fielding",
     sport_id: SOFTBALL_SPORT_ID,
     name: "Preset fielding",
@@ -150,7 +163,7 @@ export function createSeedData(): AppData {
     weekly_goal_minutes: 90,
     summer_goal_minutes: 1200,
     summer_start_date: `${year}-06-01`,
-    summer_end_date: `${year}-08-31`,
+    summer_end_date: `${year}-08-09`,
     created_at: timestamp,
   }));
   const templates: DrillTemplate[] = TEMPLATE_SEEDS.map((template) => ({

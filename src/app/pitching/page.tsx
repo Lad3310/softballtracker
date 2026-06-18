@@ -1,10 +1,10 @@
 import { AuthGate } from "@/components/auth-gate";
 import { HomeApp } from "@/components/home-app";
 
-export default function HittingPage() {
+export default function PitchingPage() {
   return (
     <AuthGate>
-      <HomeApp initialScreen="hitting" />
+      <HomeApp initialScreen="pitching" />
     </AuthGate>
   );
 }

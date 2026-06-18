@@ -4,6 +4,10 @@ export const WEEK_START_DAY = 1;
 
 export const MINUTE_PRESETS = [5, 10, 15, 20, 30, 45, 60] as const;
 
+export const SUMMER_REWARD_POINTS = 1000;
+
+export const SUMMER_REWARD_END_MONTH_DAY = "08-09";
+
 export const APP_ADMIN_EMAILS = ["joe.laird1@outlook.com"] as const;
 
 export function isAppAdminEmail(email: string | null | undefined) {

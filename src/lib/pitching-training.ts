@@ -1,0 +1,195 @@
+export const PITCHING_CHAIN_STEPS = [
+  {
+    id: "ready",
+    title: "Get ready",
+    cue: "Tall, loose, and looking at the target.",
+    detail: "Start balanced with relaxed shoulders. Pick one small spot in the catcher’s glove.",
+  },
+  {
+    id: "rock",
+    title: "Rock & move",
+    cue: "Smooth first, then strong.",
+    detail: "Use a small, comfortable rock so the body moves together instead of rushing the arm.",
+  },
+  {
+    id: "stride",
+    title: "Stride straight",
+    cue: "Land on the power line.",
+    detail: "Step toward the target and keep the stride comfortable. A straight landing makes accuracy easier.",
+  },
+  {
+    id: "circle",
+    title: "Make the circle",
+    cue: "Long, loose arm circle.",
+    detail: "Let the arm travel smoothly without forcing it. Keep the ball moving on a clean path.",
+  },
+  {
+    id: "release",
+    title: "Release & drive",
+    cue: "Brush close and send it through.",
+    detail: "Drive the ball toward the glove with the body helping the arm. Accuracy comes before speed.",
+  },
+  {
+    id: "finish",
+    title: "Finish strong",
+    cue: "Stack up and hold it.",
+    detail: "Bring the feet and body back under control. Hold the finish for one count and check your balance.",
+  },
+] as const;
+
+export const PITCHING_DRILLS = [
+  {
+    name: "Power-Line Walk",
+    time: "3 minutes",
+    focus: "Straight stride",
+    how: "Draw a line from the rubber to the target. Take slow practice motions and land with the stride foot on or beside the line.",
+    challenge: "Can you land in the same spot 5 times?",
+  },
+  {
+    name: "Power-K Freeze",
+    time: "3 sets of 5",
+    focus: "Balance and body position",
+    how: "Move slowly to the tall power-K position, freeze, check the glove and stride foot, then finish the motion.",
+    challenge: "Freeze without wobbling.",
+  },
+  {
+    name: "Walk-Through Pitch",
+    time: "2 sets of 6",
+    focus: "Rhythm and leg drive",
+    how: "Take one easy step into the pitch. Keep the motion smooth and let the legs add energy without trying to throw your hardest.",
+    challenge: "Make every rep look the same.",
+  },
+  {
+    name: "Three-Zone Target Game",
+    time: "12 pitches",
+    focus: "Accuracy",
+    how: "Choose low-inside, low-middle, or low-outside. Say the zone before each pitch and earn one point when the ball reaches it.",
+    challenge: "Score 6 points out of 12.",
+  },
+  {
+    name: "Finish & Field",
+    time: "8 reps",
+    focus: "Balanced finish",
+    how: "Pitch at an easy pace, hold the finish for one count, then get into a ready fielding position.",
+    challenge: "Finish ready for every pretend comeback ball.",
+  },
+  {
+    name: "Change-of-Speed Feel",
+    time: "Ask your coach",
+    focus: "Same motion, different speed",
+    how: "Practice only the change-up grip and release your coach has taught you. Keep the body motion looking like a fastball.",
+    challenge: "Never invent a new grip without a coach.",
+  },
+] as const;
+
+export const PITCHING_PRACTICE_PLANS = [
+  {
+    title: "10-minute reset",
+    minutes: 10,
+    plan: "Easy warm-up → Power-Line Walk → 8 target pitches → Finish & Field",
+  },
+  {
+    title: "20-minute strike builder",
+    minutes: 20,
+    plan: "Warm-up → Power-K Freeze → Walk-Through Pitch → Three-Zone Target Game",
+  },
+  {
+    title: "30-minute full practice",
+    minutes: 30,
+    plan: "Warm-up → 2 movement drills → 18 target pitches → 6 game-speed pitches → easy finish",
+  },
+] as const;
+
+export const PITCHING_ADVICE = [
+  "Warm up with easy overhand throws before full pitching motions.",
+  "Build strikes and repeatable movement before chasing more speed.",
+  "Change only one cue at a time so your body can learn it.",
+  "Stop if anything hurts. Tired is different from sharp or growing pain.",
+  "Use a catcher, net, or adult-approved target with plenty of clear space.",
+  "Learn movement pitches and new grips with a qualified coach.",
+] as const;
+
+export const PITCHING_VIDEO_RESEARCH_DATE = "June 18, 2026";
+
+export const PITCHING_VIDEOS = [
+  {
+    id: "QzojfAUcGEI",
+    title: "Softball pitching tips with Amanda Scarborough",
+    channel: "Team Express",
+    views: 2186670,
+    duration: "11:02",
+    focus: "Full pitching lesson",
+  },
+  {
+    id: "mIx9CvpGXsU",
+    title: "Basic 5 steps for a beginner pitcher",
+    channel: "Colorado Fastpitch Academy",
+    views: 2038652,
+    duration: "3:12",
+    focus: "Beginner steps",
+  },
+  {
+    id: "k5X86nD_WS4",
+    title: "Softball Power Drive — mechanics in slow motion",
+    channel: "softballpowerdrive",
+    views: 1809103,
+    duration: "1:03",
+    focus: "Slow-motion mechanics",
+  },
+  {
+    id: "VIDUC-B-eGA",
+    title: "Softball Pitching Drills for All Ages",
+    channel: "Softball Spot",
+    views: 879777,
+    duration: "4:09",
+    focus: "Practice drills",
+  },
+  {
+    id: "RIpCI6FZmjI",
+    title: "How to Throw Strikes Consistently as a Softball Pitcher",
+    channel: "Pitching Angel",
+    views: 796478,
+    duration: "4:28",
+    focus: "Accuracy",
+  },
+  {
+    id: "yhDvuDBGZSU",
+    title: "How to Pitch a Softball",
+    channel: "LIVESTRONG",
+    views: 695345,
+    duration: "3:05",
+    focus: "Beginner overview",
+  },
+  {
+    id: "avcEmdxuc30",
+    title: "Fastpitch pitching mechanics in slow motion",
+    channel: "softballpowerdrive",
+    views: 671126,
+    duration: "7:29",
+    focus: "Mechanics study",
+  },
+  {
+    id: "dxAa5K1wki4",
+    title: "How to Fast-Pitch in Softball",
+    channel: "LIVESTRONG",
+    views: 610991,
+    duration: "2:32",
+    focus: "Fastpitch basics",
+  },
+  {
+    id: "uhOFVYCmLVM",
+    title: "How to Throw a Change-Up with Amanda Scarborough",
+    channel: "Team Express",
+    views: 598271,
+    duration: "1:55",
+    focus: "Change-up basics",
+  },
+  {
+    id: "m4CV9vAs4xg",
+    title: "How To Pitch — Softball",
+    channel: "MegRem Softball",
+    views: 550488,
+    duration: "9:57",
+    focus: "Full beginner guide",
+  },
+] as const;

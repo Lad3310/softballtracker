@@ -1,4 +1,5 @@
-import { getWeekKey, getWeeksRemaining, isDateInRange } from "@/lib/time";
+import { SUMMER_REWARD_END_MONTH_DAY } from "@/lib/config";
+import { diffDays, getWeekKey, getWeeksRemaining, isDateInRange } from "@/lib/time";
 import type { Player, PracticeSession } from "@/lib/types";
 
 export function getApprovedSessions(sessions: PracticeSession[], playerId?: string) {
@@ -71,6 +72,37 @@ export function getSummerProgress(
     averageNeededPerWeek,
     met: remaining === 0,
     ahead: remaining === 0 || averageNeededPerWeek <= player.weekly_goal_minutes,
+  };
+}
+
+export function getSummerRewardProgress(
+  player: Player,
+  sessions: PracticeSession[],
+  todayKey: string,
+) {
+  const year = todayKey.slice(0, 4);
+  const configuredStartDate = player.summer_start_date;
+  const startDate = configuredStartDate.startsWith(year)
+    ? configuredStartDate
+    : `${year}-06-01`;
+  const endDate = `${year}-${SUMMER_REWARD_END_MONTH_DAY}`;
+  const goalMinutes = Math.max(1, player.summer_goal_minutes);
+  const minutes = getApprovedSessions(sessions, player.id)
+    .filter((session) => isDateInRange(session.session_date, startDate, endDate))
+    .reduce((sum, session) => sum + session.minutes, 0);
+  const remaining = Math.max(0, goalMinutes - minutes);
+  const percent = Math.min(100, Math.round((minutes / goalMinutes) * 100));
+  const daysRemaining = Math.max(0, diffDays(todayKey, endDate));
+
+  return {
+    daysRemaining,
+    endDate,
+    goalMinutes,
+    minutes,
+    percent,
+    remaining,
+    met: remaining === 0,
+    ended: todayKey > endDate,
   };
 }
 
