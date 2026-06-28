@@ -6,7 +6,6 @@ import type { User } from "@supabase/supabase-js";
 import {
   LockKeyhole,
   LogOut,
-  Mail,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -29,10 +28,6 @@ function signInErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Sign-in failed.";
 }
 
-function getAuthRedirectUrl() {
-  return new URL("/", window.location.origin).toString();
-}
-
 export function AuthGate({
   children,
   showAccountBar = false,
@@ -41,11 +36,8 @@ export function AuthGate({
   showAccountBar?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState("");
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
   const [loading, setLoading] = useState(hasSupabaseConfig());
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supabase = getSupabaseBrowserClient();
 
@@ -166,39 +158,6 @@ export function AuthGate({
     return children;
   }
 
-  const signInWithEmailLink = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-    setError(null);
-    setMessage(null);
-    setSubmitting(true);
-
-    let signInError: unknown = null;
-
-    try {
-      const result = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: getAuthRedirectUrl(),
-          shouldCreateUser: true,
-        },
-      });
-      signInError = result.error;
-    } catch (caught) {
-      signInError = caught;
-    }
-
-    setSubmitting(false);
-
-    if (signInError) {
-      setError(signInErrorMessage(signInError));
-      return;
-    }
-
-    setMessage(`We sent a secure sign-in link to ${email.trim()}.`);
-  };
-
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -239,50 +198,17 @@ export function AuthGate({
             Family training tracker
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Welcome back
+            Access is closed
           </h1>
           <p className="mt-3 text-base font-medium leading-7 text-slate-600">
-            Enter the email that received your family invite. We’ll send a
-            secure link—no password needed.
+            This tracker no longer sends sign-in links. Use a device that
+            already has a parent session, or ask the tracker owner to open
+            access another way.
           </p>
 
-          <form className="mt-7 grid gap-4" onSubmit={signInWithEmailLink}>
-            <label className="grid gap-2 text-sm font-black text-slate-700">
-              Email address
-              <input
-                autoCapitalize="none"
-                autoComplete="email"
-                autoFocus
-                className="min-h-14 rounded-2xl border border-slate-200 bg-white px-4 text-base font-bold text-slate-950 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
-                name="email"
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                required
-                type="email"
-                value={email}
-              />
-            </label>
-            <button
-              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 font-black text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-violet-200 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={submitting}
-              type="submit"
-            >
-              <Mail className="h-5 w-5" />
-              {submitting ? "Sending link…" : "Email me a sign-in link"}
-            </button>
-          </form>
-
-          {message ? (
-            <p
-              className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold leading-6 text-sky-900"
-              role="status"
-            >
-              {message} You can close this page after it arrives.
-            </p>
-          ) : null}
           {error ? (
             <p
-              className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold leading-6 text-rose-800"
+              className="mt-7 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold leading-6 text-rose-800"
               role="alert"
             >
               {error}
@@ -315,8 +241,8 @@ export function AuthGate({
             This email isn’t connected yet
           </h1>
           <p className="mt-3 font-medium leading-7 text-slate-600">
-            Ask the person who shared the tracker to invite {user.email}, then
-            try the sign-in link again.
+            Ask the person who shared the tracker to connect {user.email} to a
+            family workspace.
           </p>
           {error ? (
             <p className="mt-4 text-sm font-bold text-rose-700" role="alert">

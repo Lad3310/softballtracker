@@ -44,7 +44,7 @@ export const HITTING_CHAIN_STEPS = [
 ] as const;
 
 export const DAILY_HITTING_REMINDER =
-  "Grip -> Stance -> Load -> Stride -> Rotate & Connect -> Extend & Finish.";
+  "Grip -> Stance -> Load -> Stride -> Hips fire -> Hands follow -> Finish.";
 
 export const ANALYSIS_STRENGTHS = [
   "Athletic base on the balls of her feet with good energy.",
@@ -77,6 +77,15 @@ export const ANALYSIS_AREAS = [
 ] as const;
 
 export const TARGETED_DRILLS = [
+  {
+    name: "Hips-First Half Turns",
+    shortName: "Half turns",
+    reps: "3 sets of 6",
+    fixes: "Lower-body sequencing, arm-y swing",
+    chain: "Load -> Stride -> Rotate",
+    instructions:
+      "Start in launch position, freeze, then turn the belly button before the hands move. Finish balanced.",
+  },
   {
     name: "Dry Swings (No Ball)",
     shortName: "Dry swings",
@@ -121,6 +130,112 @@ export const TARGETED_DRILLS = [
     chain: "Grip -> Finish",
     instructions:
       "Use a weighted bat, broomstick, or regular bat for dry swings if available. Stay loose, quick, and relaxed.",
+  },
+] as const;
+
+export const HIPS_FIRST_DRILLS = [
+  {
+    name: "Hips-First Half Turns",
+    type: "Dry drill",
+    reps: "3 sets of 6 slow reps",
+    cue: "Belly button wins the race.",
+    why: "Teaches her lower body to start the swing before her hands take over.",
+    steps: [
+      "Start in launch position with the front foot down.",
+      "Freeze the hands near the back shoulder.",
+      "Turn the hips and belly button first, then let the barrel finish.",
+      "Hold the finish for one count.",
+    ],
+  },
+  {
+    name: "Step-and-Swing Load Drill",
+    type: "Dry or tee",
+    reps: "3 sets of 8",
+    cue: "Small step, hips go, hands follow.",
+    why: "Connects the stride landing to hip rotation so the swing does not become all arms.",
+    steps: [
+      "Take a short, soft stride.",
+      "Pause for a tiny beat after the front toe lands.",
+      "Fire the hips before the hands launch.",
+      "Finish tall and balanced.",
+    ],
+  },
+  {
+    name: "Knob to Knee",
+    type: "Dry drill",
+    reps: "2 sets of 8",
+    cue: "Knob works down, hips turn through.",
+    why: "Keeps the hands compact while the hips lead the chain.",
+    steps: [
+      "Load with quiet hands.",
+      "Start the turn from the ground.",
+      "Feel the knob work toward the front knee before the barrel releases.",
+      "Do not race—clean beats fast.",
+    ],
+  },
+  {
+    name: "Hips-First Tee Challenge",
+    type: "Tee drill",
+    reps: "3 rounds of 6 swings",
+    cue: "Turn, then hit.",
+    why: "Moves the hips-first cue into real contact without needing a pitcher.",
+    steps: [
+      "Set the tee middle-middle.",
+      "Say “hips first” before each swing.",
+      "Try for hard line drives up the middle.",
+      "Score one point for contact plus a balanced finish.",
+    ],
+  },
+] as const;
+
+export const TEE_WORK_DRILLS = [
+  {
+    name: "Basic Tee",
+    setup: "Middle of the plate, belly-button to mid-thigh height.",
+    reps: "10 clean swings",
+    focus: "Solid contact and balance",
+    how: "Hit line drives up the middle. Reset your feet after every swing.",
+    check: "Could you freeze at the finish without falling?",
+  },
+  {
+    name: "No-Stride Tee Swings",
+    setup: "Start with the front foot already down.",
+    reps: "2 sets of 8",
+    focus: "Hips before hands",
+    how: "Take the stride out. Turn the hips first, keep the head quiet, then swing.",
+    check: "Did the belly button start before the barrel?",
+  },
+  {
+    name: "Hips-First Tee Challenge",
+    setup: "Middle tee, normal stance.",
+    reps: "3 rounds of 6",
+    focus: "Lower-body sequencing",
+    how: "Say “hips first,” swing, and count only hard contact with a balanced finish.",
+    check: "Can you earn 4 out of 6 clean reps?",
+  },
+  {
+    name: "Tee Progression by Zones",
+    setup: "Move the tee inside, middle, and outside.",
+    reps: "6 swings per zone",
+    focus: "Finding the ball location",
+    how: "Inside ball gets pulled, middle ball goes up the middle, outside ball goes the other way.",
+    check: "Did the ball direction match the tee location?",
+  },
+  {
+    name: "High-Low Tee Path",
+    setup: "Alternate high tee and low tee inside the strike zone.",
+    reps: "5 high + 5 low",
+    focus: "Barrel path through the ball",
+    how: "Keep the swing smooth and drive through the ball instead of chopping down.",
+    check: "Were most balls line drives instead of pop-ups or rollers?",
+  },
+  {
+    name: "Weighted + Regular Tee",
+    setup: "Use a heavier bat only if it stays safe and controlled.",
+    reps: "5 controlled + 8 regular",
+    focus: "Fast, loose finish",
+    how: "Take a few slow controlled swings, then switch back to the normal bat and feel quick.",
+    check: "Did the regular bat feel faster without swinging wild?",
   },
 ] as const;
 

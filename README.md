@@ -29,29 +29,18 @@ You can also review and run the SQL directly in the Supabase SQL editor.
 
 Supabase Auth:
 
-- Enable the Email provider in Supabase Auth, including new-user signups.
-- The sign-in screen supports one-time email links and password sign-in for
-  existing users. Account creation appears only from a private tracker invite
-  link created on an existing parent's dashboard.
+- training-app no longer starts Supabase Auth email-link or magic-link flows.
+  Do not enable passwordless sign-in for this app as the primary access path.
+- Existing browser sessions can still be read so the app can apply its
+  Supabase RLS and family-scoping checks.
 - This app shares the `summerrewardsapp` Supabase project. Keep the existing
   Summer Rewards production URL as the Auth Site URL unless you intentionally
   want training-app to be the project's default redirect.
-- Add both apps' production URLs to the Auth redirect allowlist. For the
-  training app, add:
-  - `https://softballtracker.vercel.app/**`
-  - `https://*-joe-lairds-projects.vercel.app/**`
-  - `http://localhost:3000/**`
-- Each app must pass its own `redirectTo`/`emailRedirectTo` URL when starting
-  an auth flow. training-app does this automatically using its current
-  origin.
-- Keep email confirmation enabled so new password accounts must confirm their
-  email before entering the tracker.
 - Only existing tracker parents and invited email addresses can create a
   tracker family workspace. Other users in the shared Supabase Auth project
   cannot enter this app.
-- Tracker invite links are copied and shared manually. Configure custom SMTP
-  in Supabase before relying on Auth confirmation or magic-link emails for
-  external users.
+- Tracker invite links are copied and shared manually. They do not send
+  Supabase magic-link emails.
 - Kids still do not have individual logins; they use athlete cards after a parent signs in on the shared device.
 
 To preserve data from before the auth migration, create your parent account, create/find its `softball_families.id`, then assign old unscoped rows:

@@ -25,10 +25,12 @@ import {
   ANALYSIS_STRENGTHS,
   CORE_DRILLS,
   DAILY_HITTING_REMINDER,
+  HIPS_FIRST_DRILLS,
   HITTING_CHAIN_STEPS,
   MONTHLY_PROGRESSIONS,
   PRACTICAL_TIPS,
   TARGETED_DRILLS,
+  TEE_WORK_DRILLS,
   VIDEO_RESOURCES,
   WEEKLY_HITTING_SCHEDULE,
 } from "@/lib/hitting-training";
@@ -37,7 +39,7 @@ import { getMaxStreak } from "@/lib/progress";
 import { getAppDateKey, getWeekKey } from "@/lib/time";
 import type { AppData, LogSessionInput, Player, PracticeSession } from "@/lib/types";
 
-type LessonTab = "overview" | "analysis" | "drills" | "videos" | "log";
+type LessonTab = "overview" | "hips" | "tee" | "drills" | "analysis" | "videos" | "log";
 type LogKind = "Hitting Practice" | "Swing Analysis Review";
 
 const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
@@ -52,9 +54,11 @@ const TABS: Array<{
   label: string;
   icon: typeof BookOpen;
 }> = [
-  { id: "overview", label: "Overview", icon: BookOpen },
-  { id: "analysis", label: "Swing Analysis", icon: Target },
-  { id: "drills", label: "Drills", icon: ClipboardCheck },
+  { id: "overview", label: "Start", icon: BookOpen },
+  { id: "hips", label: "Hips First", icon: Flame },
+  { id: "tee", label: "Tee Work", icon: Target },
+  { id: "drills", label: "All Drills", icon: ClipboardCheck },
+  { id: "analysis", label: "Swing Review", icon: Sparkles },
   { id: "videos", label: "Videos", icon: Video },
   { id: "log", label: "Log Practice", icon: NotebookPen },
 ];
@@ -134,9 +138,9 @@ export function HittingTrainingModule({
   const [minutesInput, setMinutesInput] = useState("25");
   const [sessionDate, setSessionDate] = useState(() => getAppDateKey());
   const [selectedDrills, setSelectedDrills] = useState<string[]>([
-    TARGETED_DRILLS[0].name,
-    TARGETED_DRILLS[1].name,
-    TARGETED_DRILLS[2].name,
+    HIPS_FIRST_DRILLS[0].name,
+    TEE_WORK_DRILLS[0].name,
+    TEE_WORK_DRILLS[2].name,
   ]);
   const [selectedSteps, setSelectedSteps] = useState<string[]>([
     HITTING_CHAIN_STEPS[0].id,
@@ -177,22 +181,43 @@ export function HittingTrainingModule({
 
   const logDrillOptions = useMemo(
     () => {
-      const targetedNames = new Set<string>(TARGETED_DRILLS.map((drill) => drill.name));
-
-      return [
+      const allNames = [
+        ...HIPS_FIRST_DRILLS.map((drill) => drill.name),
+        ...TEE_WORK_DRILLS.map((drill) => drill.name),
         ...TARGETED_DRILLS.map((drill) => drill.name),
-        ...CORE_DRILLS.map((drill) => drill.name).filter((name) => !targetedNames.has(name)),
+        ...CORE_DRILLS.map((drill) => drill.name),
       ];
+
+      return Array.from(new Set(allNames));
     },
     [],
   );
 
+  const openHipsFirstPractice = () => {
+    setLogKind("Hitting Practice");
+    setSelectedDrills(HIPS_FIRST_DRILLS.slice(0, 3).map((drill) => drill.name));
+    setSelectedSteps(["load", "stride", "rotate"]);
+    setActiveTab("log");
+  };
+
+  const openTeePractice = () => {
+    setLogKind("Hitting Practice");
+    setSelectedDrills([
+      TEE_WORK_DRILLS[0].name,
+      TEE_WORK_DRILLS[1].name,
+      TEE_WORK_DRILLS[2].name,
+      TEE_WORK_DRILLS[3].name,
+    ]);
+    setSelectedSteps(["stance", "load", "rotate", "finish"]);
+    setActiveTab("log");
+  };
+
   const openSwingReview = () => {
     setLogKind("Swing Analysis Review");
     setSelectedDrills([
-      TARGETED_DRILLS[0].name,
+      HIPS_FIRST_DRILLS[0].name,
       TARGETED_DRILLS[2].name,
-      TARGETED_DRILLS[3].name,
+      TARGETED_DRILLS[4].name,
     ]);
     setSelectedSteps(["load", "stride", "rotate", "finish"]);
     setActiveTab("log");
@@ -259,11 +284,11 @@ export function HittingTrainingModule({
               Softball hitting guide
             </p>
             <h1 className="mt-3 text-4xl font-black leading-tight sm:text-6xl">
-              See it. Swing quick. Drive the ball.
+              Hips first. Tee work clear. Swing with a plan.
             </h1>
             <p className="mt-4 max-w-2xl text-lg font-bold text-sky-50 sm:text-xl">
-              Learn one cue, try one drill, and log the minutes. Smooth moves build strong,
-              confident swings.
+              Pick a lane: learn the swing chain, work hips-before-hands, run tee drills,
+              then log the practice in a few taps.
             </p>
           </div>
         </section>
@@ -298,7 +323,7 @@ export function HittingTrainingModule({
               Today&apos;s cue
             </p>
             <p className="mt-2 text-xl font-black text-cyan-950">
-              See the ball, hit the ball, rotate hard.
+              Hips fire, hands follow.
             </p>
           </div>
         </section>
@@ -355,15 +380,35 @@ export function HittingTrainingModule({
         {activeTab === "overview" ? (
           <section className="mt-4 grid gap-4">
             <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
-              <div className="flex items-start gap-3">
-                <Sparkles className="mt-1 h-6 w-6 text-sky-600" />
-                <div>
-                  <h2 className="text-2xl font-black text-stone-950">
-                    The 6-Step Hitting Chain
-                  </h2>
-                  <p className="mt-2 text-lg font-black text-stone-700">
-                    Say it out loud: {DAILY_HITTING_REMINDER}
-                  </p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="mt-1 h-6 w-6 text-sky-600" />
+                  <div>
+                    <h2 className="text-2xl font-black text-stone-950">
+                      The 6-Step Hitting Chain
+                    </h2>
+                    <p className="mt-2 text-lg font-black text-stone-700">
+                      Say it out loud: {DAILY_HITTING_REMINDER}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:min-w-56">
+                  <button
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 font-black text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                    onClick={() => setActiveTab("hips")}
+                    type="button"
+                  >
+                    <Flame className="h-5 w-5" />
+                    Find hips-first drills
+                  </button>
+                  <button
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 font-black text-sky-950 transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                    onClick={() => setActiveTab("tee")}
+                    type="button"
+                  >
+                    <Target className="h-5 w-5" />
+                    Go to tee work
+                  </button>
                 </div>
               </div>
             </div>
@@ -386,6 +431,121 @@ export function HittingTrainingModule({
                   <p className="mt-3 text-base font-bold text-stone-600">{step.body}</p>
                   <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-sm font-black text-sky-900">
                     {step.kidCheck}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {activeTab === "hips" ? (
+          <section className="mt-4 grid gap-4">
+            <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-orange-700">
+                <Flame className="h-5 w-5" />
+                Hips-before-hands lane
+              </p>
+              <h2 className="mt-2 text-3xl font-black text-orange-950">
+                Turn the hips first, then let the hands go.
+              </h2>
+              <p className="mt-2 max-w-3xl font-bold leading-7 text-orange-900">
+                These are the drills to choose when her swing looks arm-y, her front side
+                opens early, or she needs to feel the lower body start the swing.
+              </p>
+              <button
+                className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 font-black text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100"
+                onClick={openHipsFirstPractice}
+                type="button"
+              >
+                <NotebookPen className="h-5 w-5" />
+                Build a hips-first log
+              </button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {HIPS_FIRST_DRILLS.map((drill) => (
+                <article
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                  key={drill.name}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-500">
+                        {drill.type}
+                      </p>
+                      <h3 className="mt-1 text-xl font-black text-stone-950">{drill.name}</h3>
+                    </div>
+                    <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-black text-orange-800">
+                      {drill.reps}
+                    </span>
+                  </div>
+                  <p className="mt-3 rounded-xl bg-orange-50 px-3 py-2 text-sm font-black text-orange-900">
+                    Cue: {drill.cue}
+                  </p>
+                  <p className="mt-3 font-bold leading-7 text-stone-600">{drill.why}</p>
+                  <ol className="mt-4 grid gap-2">
+                    {drill.steps.map((step, index) => (
+                      <li className="flex gap-2 font-bold text-stone-700" key={step}>
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-black text-sky-800">
+                          {index + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {activeTab === "tee" ? (
+          <section className="mt-4 grid gap-4">
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-sky-700">
+                <Target className="h-5 w-5" />
+                Tee work lane
+              </p>
+              <h2 className="mt-2 text-3xl font-black text-sky-950">
+                Tee work is where the swing gets organized.
+              </h2>
+              <p className="mt-2 max-w-3xl font-bold leading-7 text-sky-900">
+                Start here when she needs simple reps, contact confidence, or a quiet place
+                to practice hips-first movement before adding timing.
+              </p>
+              <button
+                className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 font-black text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                onClick={openTeePractice}
+                type="button"
+              >
+                <NotebookPen className="h-5 w-5" />
+                Build a tee-work log
+              </button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {TEE_WORK_DRILLS.map((drill) => (
+                <article
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                  key={drill.name}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-600">
+                        {drill.focus}
+                      </p>
+                      <h3 className="mt-1 text-xl font-black text-stone-950">{drill.name}</h3>
+                    </div>
+                    <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-900">
+                      {drill.reps}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm font-black uppercase tracking-wide text-stone-500">
+                    Setup: {drill.setup}
+                  </p>
+                  <p className="mt-3 font-bold leading-7 text-stone-600">{drill.how}</p>
+                  <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-900">
+                    Check: {drill.check}
                   </p>
                 </article>
               ))}
@@ -464,6 +624,14 @@ export function HittingTrainingModule({
                 Reduce long arm path and improve sequencing (hips before hands). Better
                 lower-body drive + compact hands = more bat speed and consistency.
               </p>
+              <button
+                className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 font-black text-amber-950 shadow-sm transition hover:bg-amber-400 focus:outline-none focus:ring-4 focus:ring-amber-100"
+                onClick={() => setActiveTab("hips")}
+                type="button"
+              >
+                <Flame className="h-5 w-5" />
+                Open hips-first drills
+              </button>
             </div>
 
             <section>
@@ -514,8 +682,12 @@ export function HittingTrainingModule({
           <section className="mt-4 grid gap-4">
             <div>
               <h2 className="mb-3 text-2xl font-black text-stone-950">
-                Home T-Work Drills & Schedule
+                All hitting drills & weekly plan
               </h2>
+              <p className="mb-4 max-w-2xl font-bold text-stone-600">
+                Use the separate Hips First and Tee Work tabs when you want the fastest
+                path. This list keeps the full drill library and weekly rhythm together.
+              </p>
               <div className="grid gap-3 md:grid-cols-2">
                 {CORE_DRILLS.map((drill) => (
                   <article

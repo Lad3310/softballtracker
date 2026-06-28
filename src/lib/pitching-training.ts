@@ -40,6 +40,7 @@ export const PITCHING_CHAIN_STEPS = [
 export const PITCHING_DRILLS = [
   {
     name: "Power-Line Walk",
+    category: "Direction",
     time: "3 minutes",
     focus: "Straight stride",
     how: "Draw a line from the rubber to the target. Take slow practice motions and land with the stride foot on or beside the line.",
@@ -47,6 +48,7 @@ export const PITCHING_DRILLS = [
   },
   {
     name: "Power-K Freeze",
+    category: "Body position",
     time: "3 sets of 5",
     focus: "Balance and body position",
     how: "Move slowly to the tall power-K position, freeze, check the glove and stride foot, then finish the motion.",
@@ -54,6 +56,7 @@ export const PITCHING_DRILLS = [
   },
   {
     name: "Walk-Through Pitch",
+    category: "Rhythm",
     time: "2 sets of 6",
     focus: "Rhythm and leg drive",
     how: "Take one easy step into the pitch. Keep the motion smooth and let the legs add energy without trying to throw your hardest.",
@@ -61,6 +64,7 @@ export const PITCHING_DRILLS = [
   },
   {
     name: "Three-Zone Target Game",
+    category: "Accuracy",
     time: "12 pitches",
     focus: "Accuracy",
     how: "Choose low-inside, low-middle, or low-outside. Say the zone before each pitch and earn one point when the ball reaches it.",
@@ -68,6 +72,7 @@ export const PITCHING_DRILLS = [
   },
   {
     name: "Finish & Field",
+    category: "Finish",
     time: "8 reps",
     focus: "Balanced finish",
     how: "Pitch at an easy pace, hold the finish for one count, then get into a ready fielding position.",
@@ -75,6 +80,7 @@ export const PITCHING_DRILLS = [
   },
   {
     name: "Change-of-Speed Feel",
+    category: "Pitch feel",
     time: "Ask your coach",
     focus: "Same motion, different speed",
     how: "Practice only the change-up grip and release your coach has taught you. Keep the body motion looking like a fastball.",
@@ -86,17 +92,52 @@ export const PITCHING_PRACTICE_PLANS = [
   {
     title: "10-minute reset",
     minutes: 10,
+    goal: "A short, clean session when you only have a few minutes.",
     plan: "Easy warm-up → Power-Line Walk → 8 target pitches → Finish & Field",
+    drills: ["Power-Line Walk", "Three-Zone Target Game", "Finish & Field"],
+    blocks: [
+      { label: "Warm up", detail: "Easy overhand throws and 5 smooth arm circles." },
+      { label: "Direction", detail: "Power-Line Walk for 3 minutes." },
+      { label: "Accuracy", detail: "8 target pitches to one low zone." },
+      { label: "Finish", detail: "Finish & Field for 4 calm reps." },
+    ],
+    coachCue: "Smooth first, then strong.",
   },
   {
     title: "20-minute strike builder",
     minutes: 20,
+    goal: "Build a repeatable motion and then compete for strikes.",
     plan: "Warm-up → Power-K Freeze → Walk-Through Pitch → Three-Zone Target Game",
+    drills: ["Power-K Freeze", "Walk-Through Pitch", "Three-Zone Target Game"],
+    blocks: [
+      { label: "Warm up", detail: "Easy throws, wrist snaps, and relaxed circles." },
+      { label: "Shape", detail: "Power-K Freeze for 3 sets of 5." },
+      { label: "Move", detail: "Walk-Through Pitch for 2 sets of 6." },
+      { label: "Compete", detail: "Three-Zone Target Game for 12 pitches." },
+    ],
+    coachCue: "Land straight, brush close, finish tall.",
   },
   {
     title: "30-minute full practice",
     minutes: 30,
+    goal: "A complete session with mechanics, targets, and a few game-speed reps.",
     plan: "Warm-up → 2 movement drills → 18 target pitches → 6 game-speed pitches → easy finish",
+    drills: [
+      "Power-Line Walk",
+      "Power-K Freeze",
+      "Walk-Through Pitch",
+      "Three-Zone Target Game",
+      "Finish & Field",
+    ],
+    blocks: [
+      { label: "Warm up", detail: "Easy throws, wrist snaps, arm circles, and 3 relaxed pitches." },
+      { label: "Direction", detail: "Power-Line Walk for 3 minutes." },
+      { label: "Shape", detail: "Power-K Freeze for 3 sets of 5." },
+      { label: "Targets", detail: "18 pitches split across low-inside, low-middle, low-outside." },
+      { label: "Game reps", detail: "6 confident pitches at game rhythm." },
+      { label: "Finish", detail: "Finish & Field, then stop before the motion gets tired." },
+    ],
+    coachCue: "Clean reps beat tired reps.",
   },
 ] as const;
 

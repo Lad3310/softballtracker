@@ -36,7 +36,7 @@ import { getMaxStreak } from "@/lib/progress";
 import { getAppDateKey, getWeekKey } from "@/lib/time";
 import type { AppData, LogSessionInput, Player, PracticeSession } from "@/lib/types";
 
-type PitchingTab = "start" | "drills" | "videos" | "log";
+type PitchingTab = "start" | "routines" | "drills" | "videos" | "log";
 
 const SOFTBALL_SPORT_ID = "10000000-0000-4000-8000-000000000001";
 const MINUTE_OPTIONS = [10, 15, 20, 30] as const;
@@ -47,10 +47,15 @@ const TABS: Array<{
   icon: typeof BookOpen;
 }> = [
   { id: "start", label: "Start Here", icon: BookOpen },
+  { id: "routines", label: "Build Session", icon: Timer },
   { id: "drills", label: "Drills", icon: Target },
   { id: "videos", label: "Top Videos", icon: Video },
   { id: "log", label: "Log Practice", icon: NotebookPen },
 ];
+
+const PITCHING_DRILL_CATEGORIES = Array.from(
+  new Set(PITCHING_DRILLS.map((drill) => drill.category)),
+);
 
 function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -120,9 +125,7 @@ export function PitchingTrainingModule({
   const [minutesInput, setMinutesInput] = useState("20");
   const [sessionDate, setSessionDate] = useState(() => getAppDateKey());
   const [selectedDrills, setSelectedDrills] = useState<string[]>([
-    PITCHING_DRILLS[0].name,
-    PITCHING_DRILLS[1].name,
-    PITCHING_DRILLS[3].name,
+    ...PITCHING_PRACTICE_PLANS[1].drills,
   ]);
   const [feeling, setFeeling] = useState<string | null>("Good");
   const [notes, setNotes] = useState("");
@@ -167,7 +170,7 @@ export function PitchingTrainingModule({
     onSubmit({
       player: activePlayer,
       sport_id: softballSport.id,
-      practice_type: "Pitching Practice",
+      practice_type: "Pitching Session",
       minutes,
       drills: selectedDrills.map((label) => ({ label, completed: true })),
       feeling,
@@ -176,6 +179,13 @@ export function PitchingTrainingModule({
       session_date: sessionDate,
       require_parent_approval: data.settings.require_parent_approval,
     });
+  };
+
+  const applyRoutine = (plan: (typeof PITCHING_PRACTICE_PLANS)[number]) => {
+    setMinutesInput(String(plan.minutes));
+    setSelectedDrills([...plan.drills]);
+    setNotes(`Routine: ${plan.title}. Cue: ${plan.coachCue}`);
+    setActiveTab("log");
   };
 
   return (
@@ -208,11 +218,11 @@ export function PitchingTrainingModule({
               Softball pitching guide
             </p>
             <h1 className="mt-3 text-4xl font-black leading-tight sm:text-6xl">
-              Strong motion. Brave throws. Better strikes.
+              Build a pitching session one block at a time.
             </h1>
             <p className="mt-4 max-w-2xl text-lg font-bold text-indigo-50 sm:text-xl">
-              Learn one cue, try one drill, and log the minutes. Accuracy first—speed can
-              grow later.
+              Pick a routine, follow the drill blocks, and log what you practiced.
+              Accuracy first—speed can grow later.
             </p>
           </div>
         </section>
@@ -242,19 +252,34 @@ export function PitchingTrainingModule({
             </div>
           </div>
 
-          <button
-            className="group flex min-h-24 items-center justify-between rounded-2xl bg-amber-300 p-4 text-left text-amber-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-amber-100"
-            onClick={() => setActiveTab("log")}
-            type="button"
-          >
-            <span>
-              <span className="block text-xs font-black uppercase tracking-[0.14em]">
-                Finished practicing?
+          <div className="grid gap-3">
+            <button
+              className="group flex min-h-24 items-center justify-between rounded-2xl bg-indigo-600 p-4 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100"
+              onClick={() => setActiveTab("routines")}
+              type="button"
+            >
+              <span>
+                <span className="block text-xs font-black uppercase tracking-[0.14em] text-indigo-100">
+                  Need a plan?
+                </span>
+                <span className="mt-1 block text-xl font-black">Build a session</span>
               </span>
-              <span className="mt-1 block text-xl font-black">Log it now</span>
-            </span>
-            <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
-          </button>
+              <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
+            </button>
+            <button
+              className="group flex min-h-24 items-center justify-between rounded-2xl bg-amber-300 p-4 text-left text-amber-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-amber-100"
+              onClick={() => setActiveTab("log")}
+              type="button"
+            >
+              <span>
+                <span className="block text-xs font-black uppercase tracking-[0.14em]">
+                  Finished practicing?
+                </span>
+                <span className="mt-1 block text-xl font-black">Log it now</span>
+              </span>
+              <ChevronRight className="h-7 w-7 transition group-hover:translate-x-1" />
+            </button>
+          </div>
         </section>
 
         {activePlayer ? (
@@ -356,40 +381,121 @@ export function PitchingTrainingModule({
           </section>
         ) : null}
 
+        {activeTab === "routines" ? (
+          <section className="mt-4 grid gap-4">
+            <div className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-indigo-600">
+                <Timer className="h-5 w-5" />
+                Pitching session builder
+              </p>
+              <h2 className="mt-2 text-3xl font-black text-slate-950">
+                Pick the session size, then follow the blocks.
+              </h2>
+              <p className="mt-2 max-w-3xl font-bold leading-7 text-slate-600">
+                These routines turn drills into a real practice. They start easy, add one
+                mechanic focus, compete for targets, then finish before the motion gets tired.
+              </p>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              {PITCHING_PRACTICE_PLANS.map((plan) => (
+                <article
+                  className="flex h-full flex-col rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm"
+                  key={plan.title}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-[0.14em] text-violet-500">
+                        {plan.minutes} minutes
+                      </p>
+                      <h3 className="mt-1 text-2xl font-black text-slate-950">{plan.title}</h3>
+                    </div>
+                    <Clock3 className="h-7 w-7 text-indigo-500" />
+                  </div>
+                  <p className="mt-3 font-bold leading-7 text-slate-600">{plan.goal}</p>
+                  <div className="mt-4 grid gap-2">
+                    {plan.blocks.map((block, index) => (
+                      <div
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                        key={`${plan.title}-${block.label}`}
+                      >
+                        <p className="text-sm font-black text-slate-950">
+                          {index + 1}. {block.label}
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-slate-600">{block.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-4 rounded-xl bg-indigo-50 px-3 py-2 text-sm font-black text-indigo-900">
+                    Cue: {plan.coachCue}
+                  </p>
+                  <button
+                    className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 font-black text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 lg:mt-auto"
+                    onClick={() => applyRoutine(plan)}
+                    type="button"
+                  >
+                    <NotebookPen className="h-5 w-5" />
+                    Use this routine
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {activeTab === "drills" ? (
           <section className="mt-4 grid gap-5">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.14em] text-indigo-600">
-                Pick 2 or 3
+                Pick 2 or 3 after choosing a focus
               </p>
               <h2 className="mt-1 text-3xl font-black text-slate-950">Pitching drills</h2>
               <p className="mt-2 max-w-2xl font-bold text-slate-600">
-                Clean reps beat tired reps. Stop while the motion still feels strong.
+                Clean reps beat tired reps. Use the categories to find the drill that
+                matches today&apos;s pitching problem.
               </p>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {PITCHING_DRILLS.map((drill) => (
-                <article
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                  key={drill.name}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-500">
-                        {drill.focus}
-                      </p>
-                      <h3 className="mt-1 text-xl font-black text-slate-950">{drill.name}</h3>
+            <div className="grid gap-4">
+              {PITCHING_DRILL_CATEGORIES.map((category) => {
+                const drills = PITCHING_DRILLS.filter((drill) => drill.category === category);
+
+                return (
+                  <section
+                    className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4"
+                    key={category}
+                  >
+                    <h3 className="text-xl font-black text-indigo-950">{category}</h3>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      {drills.map((drill) => (
+                        <article
+                          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                          key={drill.name}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-500">
+                                {drill.focus}
+                              </p>
+                              <h4 className="mt-1 text-xl font-black text-slate-950">
+                                {drill.name}
+                              </h4>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">
+                              {drill.time}
+                            </span>
+                          </div>
+                          <p className="mt-4 font-bold leading-relaxed text-slate-600">
+                            {drill.how}
+                          </p>
+                          <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm font-black text-amber-900">
+                            ⭐ {drill.challenge}
+                          </p>
+                        </article>
+                      ))}
                     </div>
-                    <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-700">
-                      {drill.time}
-                    </span>
-                  </div>
-                  <p className="mt-4 font-bold leading-relaxed text-slate-600">{drill.how}</p>
-                  <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm font-black text-amber-900">
-                    ⭐ {drill.challenge}
-                  </p>
-                </article>
-              ))}
+                  </section>
+                );
+              })}
             </div>
 
             <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5">
@@ -399,10 +505,7 @@ export function PitchingTrainingModule({
                   <button
                     className="group rounded-2xl border border-indigo-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100"
                     key={plan.title}
-                    onClick={() => {
-                      setMinutesInput(String(plan.minutes));
-                      setActiveTab("log");
-                    }}
+                    onClick={() => applyRoutine(plan)}
                     type="button"
                   >
                     <span className="flex items-center justify-between gap-3">
@@ -576,11 +679,11 @@ export function PitchingTrainingModule({
               </fieldset>
 
               <label className="grid gap-2">
-                <span className="font-black text-slate-950">One thing I noticed</span>
+                <span className="font-black text-slate-950">Routine / one thing I noticed</span>
                 <textarea
                   className="min-h-24 rounded-xl border border-slate-200 p-3 font-medium text-slate-950 outline-none focus:ring-4 focus:ring-indigo-100"
                   onChange={(event) => setNotes(event.target.value)}
-                  placeholder="My stride stayed straight, or I hit 6 out of 12 targets."
+                  placeholder="Routine: 20-minute strike builder. My stride stayed straight, or I hit 6 out of 12 targets."
                   value={notes}
                 />
               </label>
