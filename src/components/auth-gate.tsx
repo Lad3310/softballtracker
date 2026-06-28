@@ -9,7 +9,11 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { getSupabaseBrowserClient, hasSupabaseConfig } from "@/lib/supabase";
+import {
+  clearSupabaseBrowserSession,
+  getSupabaseBrowserClient,
+  hasSupabaseConfig,
+} from "@/lib/supabase";
 
 type AccessStatus = "checking" | "allowed" | "denied";
 
@@ -18,6 +22,14 @@ function isBrowserSecurityError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
 
   return name === "SecurityError" || /operation is insecure|security/i.test(message);
+}
+
+function isStaleRefreshTokenError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return /invalid refresh token|refresh token not found|refresh token.*not found/i.test(
+    message,
+  );
 }
 
 function signInErrorMessage(error: unknown) {
@@ -83,6 +95,25 @@ export function AuthGate({
       return Boolean(invitation.data);
     };
 
+    const clearSavedSession = async () => {
+      clearSupabaseBrowserSession();
+
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // The direct local storage purge above is the important recovery path.
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setUser(null);
+      setAccessStatus("checking");
+      setError(null);
+      setLoading(false);
+    };
+
     const applyUser = async (activeUser: User | null) => {
       if (!mounted) {
         return;
@@ -125,6 +156,11 @@ export function AuthGate({
         }
 
         if (sessionError) {
+          if (isStaleRefreshTokenError(sessionError)) {
+            void clearSavedSession();
+            return;
+          }
+
           setError(signInErrorMessage(sessionError));
         }
 
@@ -132,6 +168,11 @@ export function AuthGate({
       })
       .catch((sessionError: unknown) => {
         if (!mounted) {
+          return;
+        }
+
+        if (isStaleRefreshTokenError(sessionError)) {
+          void clearSavedSession();
           return;
         }
 
@@ -159,9 +200,17 @@ export function AuthGate({
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // A stale browser session can make Supabase signOut fail before it clears
+      // storage, so we always fall back to a direct local cleanup below.
+    }
+
+    clearSupabaseBrowserSession();
     setUser(null);
     setAccessStatus("checking");
+    setError(null);
   };
 
   if (loading || (user && accessStatus === "checking")) {
@@ -201,9 +250,8 @@ export function AuthGate({
             Access is closed
           </h1>
           <p className="mt-3 text-base font-medium leading-7 text-slate-600">
-            This tracker no longer sends sign-in links. Use a device that
-            already has a parent session, or ask the tracker owner to open
-            access another way.
+            This tracker is private. Use a device that already has a parent
+            session, or ask the tracker owner to open access another way.
           </p>
 
           {error ? (
