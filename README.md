@@ -29,18 +29,19 @@ You can also review and run the SQL directly in the Supabase SQL editor.
 
 Supabase Auth:
 
-- training-app no longer starts Supabase Auth email-link or magic-link flows.
-  Do not enable passwordless sign-in for this app as the primary access path.
-- Existing browser sessions can still be read so the app can apply its
-  Supabase RLS and family-scoping checks.
+- training-app starts a standard Supabase sign-in flow from the access gate.
+  Parents can use email/password, and invited emails can request a passwordless
+  email sign-in link.
+- Existing browser sessions are still read so the app can apply its Supabase
+  RLS and family-scoping checks.
 - This app shares the `summerrewardsapp` Supabase project. Keep the existing
   Summer Rewards production URL as the Auth Site URL unless you intentionally
   want training-app to be the project's default redirect.
 - Only existing tracker parents and invited email addresses can create a
   tracker family workspace. Other users in the shared Supabase Auth project
   cannot enter this app.
-- Tracker invite links are copied and shared manually. They do not send
-  Supabase magic-link emails.
+- Tracker invitations allow invited emails through the access check after
+  Supabase sign-in.
 - Kids still do not have individual logins; they use athlete cards after a parent signs in on the shared device.
 
 To preserve data from before the auth migration, create your parent account, create/find its `softball_families.id`, then assign old unscoped rows:

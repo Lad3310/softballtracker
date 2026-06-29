@@ -4,8 +4,10 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
+  KeyRound,
   LockKeyhole,
   LogOut,
+  Mail,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -15,6 +17,7 @@ import {
   hasSupabaseConfig,
 } from "@/lib/supabase";
 
+type AuthMethod = "password" | "email-link";
 type AccessStatus = "checking" | "allowed" | "denied";
 
 function isBrowserSecurityError(error: unknown) {
@@ -40,6 +43,10 @@ function signInErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Sign-in failed.";
 }
 
+function getAuthRedirectUrl() {
+  return new URL("/", window.location.origin).toString();
+}
+
 export function AuthGate({
   children,
   showAccountBar = false,
@@ -48,8 +55,13 @@ export function AuthGate({
   showAccountBar?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("password");
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
   const [loading, setLoading] = useState(hasSupabaseConfig());
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supabase = getSupabaseBrowserClient();
 
@@ -199,6 +211,72 @@ export function AuthGate({
     return children;
   }
 
+  const clearFeedback = () => {
+    setError(null);
+    setMessage(null);
+  };
+
+  const chooseAuthMethod = (method: AuthMethod) => {
+    setAuthMethod(method);
+    clearFeedback();
+  };
+
+  const signInWithEmailLink = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    clearFeedback();
+    setSubmitting(true);
+
+    let signInError: unknown = null;
+
+    try {
+      const result = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: getAuthRedirectUrl(),
+          shouldCreateUser: true,
+        },
+      });
+      signInError = result.error;
+    } catch (caught) {
+      signInError = caught;
+    }
+
+    setSubmitting(false);
+
+    if (signInError) {
+      setError(signInErrorMessage(signInError));
+      return;
+    }
+
+    setMessage(`We sent a secure sign-in link to ${email.trim()}.`);
+  };
+
+  const submitPassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    clearFeedback();
+    setSubmitting(true);
+
+    let signInError: unknown = null;
+
+    try {
+      const result = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      signInError = result.error;
+    } catch (caught) {
+      signInError = caught;
+    }
+
+    setSubmitting(false);
+
+    if (signInError) {
+      setError(signInErrorMessage(signInError));
+    }
+  };
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -211,6 +289,8 @@ export function AuthGate({
     setUser(null);
     setAccessStatus("checking");
     setError(null);
+    setMessage(null);
+    setPassword("");
   };
 
   if (loading || (user && accessStatus === "checking")) {
@@ -247,16 +327,111 @@ export function AuthGate({
             Family training tracker
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Access is closed
+            Sign in to continue
           </h1>
           <p className="mt-3 text-base font-medium leading-7 text-slate-600">
-            This tracker is private. Use a device that already has a parent
-            session, or ask the tracker owner to open access another way.
+            Use your Supabase account for this family tracker. Invited emails
+            can also request a secure sign-in link.
           </p>
 
+          <div
+            aria-label="Sign-in method"
+            className="mt-7 grid grid-cols-2 rounded-2xl bg-slate-100 p-1"
+          >
+            <button
+              aria-pressed={authMethod === "password"}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition ${
+                authMethod === "password"
+                  ? "bg-white text-slate-950 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              onClick={() => chooseAuthMethod("password")}
+              type="button"
+            >
+              <KeyRound className="h-4 w-4" />
+              Password
+            </button>
+            <button
+              aria-pressed={authMethod === "email-link"}
+              className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition ${
+                authMethod === "email-link"
+                  ? "bg-white text-slate-950 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              onClick={() => chooseAuthMethod("email-link")}
+              type="button"
+            >
+              <Mail className="h-4 w-4" />
+              Email link
+            </button>
+          </div>
+
+          <form
+            className="mt-5 grid gap-4"
+            onSubmit={
+              authMethod === "email-link" ? signInWithEmailLink : submitPassword
+            }
+          >
+            <label className="grid gap-2 text-sm font-black text-slate-700">
+              Email address
+              <input
+                autoCapitalize="none"
+                autoComplete="username"
+                autoFocus
+                className="min-h-14 rounded-2xl border border-slate-200 bg-white px-4 text-base font-bold text-slate-950 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                name="email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+                required
+                type="email"
+                value={email}
+              />
+            </label>
+            {authMethod === "password" ? (
+              <label className="grid gap-2 text-sm font-black text-slate-700">
+                Password
+                <input
+                  autoComplete="current-password"
+                  className="min-h-14 rounded-2xl border border-slate-200 bg-white px-4 text-base font-bold text-slate-950 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+                  name="password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={password}
+                />
+              </label>
+            ) : null}
+            <button
+              className="flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 font-black text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-violet-200 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={submitting}
+              type="submit"
+            >
+              {authMethod === "email-link" ? (
+                <Mail className="h-5 w-5" />
+              ) : (
+                <KeyRound className="h-5 w-5" />
+              )}
+              {submitting
+                ? authMethod === "email-link"
+                  ? "Sending link…"
+                  : "Signing in…"
+                : authMethod === "email-link"
+                  ? "Email me a sign-in link"
+                  : "Sign in"}
+            </button>
+          </form>
+
+          {message ? (
+            <p
+              className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold leading-6 text-sky-900"
+              role="status"
+            >
+              {message} Open the link from this browser to finish signing in.
+            </p>
+          ) : null}
           {error ? (
             <p
-              className="mt-7 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold leading-6 text-rose-800"
+              className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold leading-6 text-rose-800"
               role="alert"
             >
               {error}

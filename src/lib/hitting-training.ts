@@ -396,6 +396,125 @@ export const VIDEO_RESOURCES = [
   },
 ] as const;
 
+export const ANAMARIE_BRUNI_TEE_REFERENCE = {
+  title: "AnaMarie Bruni: 3 Simple Tee Drills",
+  label: "AI video notes",
+  videoId: "_TICurMOZzo",
+  url: "https://www.youtube.com/watch?v=_TICurMOZzo&list=PLVHBOmQa8wNlM4uqk6jTotfc69eXy52yg&index=7",
+  embedUrl: "https://www.youtube-nocookie.com/embed/_TICurMOZzo",
+  summary:
+    "Three tee drills for swing sequence, extension through the middle, and balance/timing without letting the body leak forward.",
+  practicePlan:
+    "Run these as a 20-minute tee session: bottom hand to feel sequence, extension to drive through center field, then flamingo to test balance and timing.",
+  drills: [
+    {
+      name: "Bottom Hand Isolation Drill",
+      logLabel: "AnaMarie: Bottom Hand Isolation",
+      timestamp: "4:37-8:31",
+      url: "https://www.youtube.com/watch?v=_TICurMOZzo&t=277s",
+      focus: "Bottom-up swing sequence",
+      useWhen: "Hands race ahead of the hips or the swing gets arm-y.",
+      reps: "2 rounds of 6 controlled swings",
+      chainStepIds: ["stance", "rotate", "finish"],
+      cues: [
+        "Widen the stance and remove the load.",
+        "Sequence the swing knee -> hip -> elbow -> hand.",
+        "Let the hips fire before the bottom hand reaches contact.",
+        "Arrive at collision with strong posture.",
+      ],
+    },
+    {
+      name: "Extension Drill",
+      logLabel: "AnaMarie: Extension Drill",
+      timestamp: "8:38-12:11",
+      url: "https://www.youtube.com/watch?v=_TICurMOZzo&t=518s",
+      focus: "Hands inside, drive through the middle",
+      useWhen: "The hitter pulls off early or loses the arms/forearms triangle.",
+      reps: "2 rounds of 8 line-drive swings",
+      chainStepIds: ["rotate", "finish"],
+      cues: [
+        "Use two hands and a short trainer if available.",
+        "Keep the hands inside the ball.",
+        "Drive the ball toward the pitcher or center fielder.",
+        "Rotate without yanking the front side away.",
+      ],
+    },
+    {
+      name: "Flamingo Drill",
+      logLabel: "AnaMarie: Flamingo Drill",
+      timestamp: "12:51-16:16",
+      url: "https://www.youtube.com/watch?v=_TICurMOZzo&t=771s",
+      focus: "Timing, balance, and backside weight",
+      useWhen: "The hitter leaks forward before the swing starts.",
+      reps: "6-8 swings with a 3-second balance hold",
+      chainStepIds: ["load", "stride", "rotate"],
+      cues: [
+        "Start balanced on the back leg.",
+        "Hold the flamingo position for three seconds.",
+        "Load and set the hands without drifting forward.",
+        "Swing only after the body and hands are synchronized.",
+      ],
+    },
+  ],
+} as const;
+
+export const TEE_WORK_PRACTICE_NOTES = {
+  title: "I'm Doing Tee Work",
+  subtitle: "No video needed. Set the tee up and follow these cards.",
+  setup: [
+    "Tee starts middle-middle.",
+    "Feet a little wider than shoulders.",
+    "One good cue at a time.",
+    "Reset after every swing.",
+  ],
+  rounds: [
+    {
+      name: "Round 1: Bottom Hand",
+      time: "5 minutes",
+      reps: "6 slow swings",
+      goal: "Hips go before hands.",
+      say: "Knee, hip, elbow, hand.",
+      doThis: [
+        "Wide stance. No stride.",
+        "Bottom hand only.",
+        "Turn the hips, then swing.",
+        "Freeze strong at contact.",
+      ],
+    },
+    {
+      name: "Round 2: Extension",
+      time: "7 minutes",
+      reps: "8 line drives",
+      goal: "Drive the ball up the middle.",
+      say: "Through the pitcher.",
+      doThis: [
+        "Two hands.",
+        "Hands stay inside the ball.",
+        "Swing through center field.",
+        "Do not pull off early.",
+      ],
+    },
+    {
+      name: "Round 3: Flamingo",
+      time: "8 minutes",
+      reps: "6-8 swings",
+      goal: "Stay back and balanced.",
+      say: "Hold, load, swing.",
+      doThis: [
+        "Stand on the back leg.",
+        "Hold balance for three seconds.",
+        "Load without drifting forward.",
+        "Swing after hands and body are ready.",
+      ],
+    },
+  ],
+  finish: [
+    "Best swing today",
+    "One thing that felt better",
+    "One thing to try next time",
+  ],
+} as const;
+
 export const PRACTICAL_TIPS = [
   "Tee height: Belly-button to mid-thigh level (strike zone).",
   "Grip check: Knuckles lined up, light grip.",

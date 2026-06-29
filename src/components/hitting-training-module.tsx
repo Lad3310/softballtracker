@@ -23,6 +23,7 @@ import { FEELINGS } from "@/lib/config";
 import {
   ANALYSIS_AREAS,
   ANALYSIS_STRENGTHS,
+  ANAMARIE_BRUNI_TEE_REFERENCE,
   CORE_DRILLS,
   DAILY_HITTING_REMINDER,
   HIPS_FIRST_DRILLS,
@@ -30,6 +31,7 @@ import {
   MONTHLY_PROGRESSIONS,
   PRACTICAL_TIPS,
   TARGETED_DRILLS,
+  TEE_WORK_PRACTICE_NOTES,
   TEE_WORK_DRILLS,
   VIDEO_RESOURCES,
   WEEKLY_HITTING_SCHEDULE,
@@ -62,6 +64,12 @@ const TABS: Array<{
   { id: "videos", label: "Videos", icon: Video },
   { id: "log", label: "Log Practice", icon: NotebookPen },
 ];
+
+const SUPPLEMENTAL_VIDEO_RESOURCES = VIDEO_RESOURCES.filter(
+  (resource) => !resource.url.includes(ANAMARIE_BRUNI_TEE_REFERENCE.videoId),
+);
+
+type AnaMarieVideoDrill = (typeof ANAMARIE_BRUNI_TEE_REFERENCE.drills)[number];
 
 function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -186,6 +194,7 @@ export function HittingTrainingModule({
         ...TEE_WORK_DRILLS.map((drill) => drill.name),
         ...TARGETED_DRILLS.map((drill) => drill.name),
         ...CORE_DRILLS.map((drill) => drill.name),
+        ...ANAMARIE_BRUNI_TEE_REFERENCE.drills.map((drill) => drill.logLabel),
       ];
 
       return Array.from(new Set(allNames));
@@ -200,18 +209,6 @@ export function HittingTrainingModule({
     setActiveTab("log");
   };
 
-  const openTeePractice = () => {
-    setLogKind("Hitting Practice");
-    setSelectedDrills([
-      TEE_WORK_DRILLS[0].name,
-      TEE_WORK_DRILLS[1].name,
-      TEE_WORK_DRILLS[2].name,
-      TEE_WORK_DRILLS[3].name,
-    ]);
-    setSelectedSteps(["stance", "load", "rotate", "finish"]);
-    setActiveTab("log");
-  };
-
   const openSwingReview = () => {
     setLogKind("Swing Analysis Review");
     setSelectedDrills([
@@ -220,6 +217,38 @@ export function HittingTrainingModule({
       TARGETED_DRILLS[4].name,
     ]);
     setSelectedSteps(["load", "stride", "rotate", "finish"]);
+    setActiveTab("log");
+  };
+
+  const openAnaMariePractice = () => {
+    setLogKind("Hitting Practice");
+    setMinutesInput("20");
+    setSelectedDrills(
+      ANAMARIE_BRUNI_TEE_REFERENCE.drills.map((drill) => drill.logLabel),
+    );
+    setSelectedSteps(
+      Array.from(
+        new Set(
+          ANAMARIE_BRUNI_TEE_REFERENCE.drills.flatMap((drill) => drill.chainStepIds),
+        ),
+      ),
+    );
+    setReviewNotes(
+      `${ANAMARIE_BRUNI_TEE_REFERENCE.title}: ${ANAMARIE_BRUNI_TEE_REFERENCE.practicePlan}`,
+    );
+    setImprovedText("");
+    setActiveTab("log");
+  };
+
+  const openAnaMarieDrillPractice = (drill: AnaMarieVideoDrill) => {
+    setLogKind("Hitting Practice");
+    setMinutesInput("8");
+    setSelectedDrills([drill.logLabel]);
+    setSelectedSteps([...drill.chainStepIds]);
+    setReviewNotes(
+      `${drill.name} (${drill.timestamp}): ${drill.focus}. ${drill.useWhen}`,
+    );
+    setImprovedText("");
     setActiveTab("log");
   };
 
@@ -513,42 +542,149 @@ export function HittingTrainingModule({
                 Start here when she needs simple reps, contact confidence, or a quiet place
                 to practice hips-first movement before adding timing.
               </p>
-              <button
-                className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 font-black text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-100"
-                onClick={openTeePractice}
-                type="button"
-              >
-                <NotebookPen className="h-5 w-5" />
-                Build a tee-work log
-              </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 font-black text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                  onClick={openAnaMariePractice}
+                  type="button"
+                >
+                  <NotebookPen className="h-5 w-5" />
+                  Log this tee plan
+                </button>
+                <button
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-white px-4 font-black text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                  onClick={() => setActiveTab("videos")}
+                  type="button"
+                >
+                  <Video className="h-5 w-5" />
+                  Video source
+                </button>
+              </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              {TEE_WORK_DRILLS.map((drill) => (
-                <article
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                  key={drill.name}
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-emerald-700">
+                    <ClipboardCheck className="h-5 w-5" />
+                    Practice notes
+                  </p>
+                  <h3 className="mt-2 text-3xl font-black text-emerald-950">
+                    {TEE_WORK_PRACTICE_NOTES.title}
+                  </h3>
+                  <p className="mt-2 text-lg font-black text-emerald-900">
+                    {TEE_WORK_PRACTICE_NOTES.subtitle}
+                  </p>
+                </div>
+                <button
+                  className="flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 font-black text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                  onClick={openAnaMariePractice}
+                  type="button"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-600">
-                        {drill.focus}
+                  <NotebookPen className="h-5 w-5" />
+                  Start log
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)]">
+                <aside className="rounded-2xl border border-emerald-200 bg-white p-4">
+                  <h4 className="text-lg font-black text-stone-950">Set up first</h4>
+                  <ul className="mt-3 grid gap-2">
+                    {TEE_WORK_PRACTICE_NOTES.setup.map((item) => (
+                      <li className="flex gap-2 text-sm font-black text-stone-700" key={item}>
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </aside>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  {TEE_WORK_PRACTICE_NOTES.rounds.map((round, index) => (
+                    <article
+                      className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"
+                      key={round.name}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-black text-white">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <h4 className="text-lg font-black text-stone-950">
+                            {round.name}
+                          </h4>
+                          <p className="mt-1 text-sm font-black text-emerald-800">
+                            {round.time} · {round.reps}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-950">
+                        Goal: {round.goal}
                       </p>
-                      <h3 className="mt-1 text-xl font-black text-stone-950">{drill.name}</h3>
+                      <p className="mt-3 text-xl font-black text-slate-950">
+                        Say: {round.say}
+                      </p>
+                      <ul className="mt-3 grid gap-2">
+                        {round.doThis.map((item) => (
+                          <li className="flex gap-2 text-sm font-bold text-stone-700" key={item}>
+                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-white p-4">
+                <h4 className="text-lg font-black text-stone-950">Before you finish</h4>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {TEE_WORK_PRACTICE_NOTES.finish.map((item) => (
+                    <div
+                      className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-950"
+                      key={item}
+                    >
+                      {item}
                     </div>
-                    <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-900">
-                      {drill.reps}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm font-black uppercase tracking-wide text-stone-500">
-                    Setup: {drill.setup}
-                  </p>
-                  <p className="mt-3 font-bold leading-7 text-stone-600">{drill.how}</p>
-                  <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-900">
-                    Check: {drill.check}
-                  </p>
-                </article>
-              ))}
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <div>
+              <h3 className="mb-3 text-xl font-black text-stone-950">
+                More tee-work choices
+              </h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                {TEE_WORK_DRILLS.map((drill) => (
+                  <article
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    key={drill.name}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-600">
+                          {drill.focus}
+                        </p>
+                        <h3 className="mt-1 text-xl font-black text-stone-950">
+                          {drill.name}
+                        </h3>
+                      </div>
+                      <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-black text-sky-900">
+                        {drill.reps}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm font-black uppercase tracking-wide text-stone-500">
+                      Setup: {drill.setup}
+                    </p>
+                    <p className="mt-3 font-bold leading-7 text-stone-600">{drill.how}</p>
+                    <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-900">
+                      Check: {drill.check}
+                    </p>
+                  </article>
+                ))}
+              </div>
             </div>
           </section>
         ) : null}
@@ -752,14 +888,149 @@ export function HittingTrainingModule({
 
         {activeTab === "videos" ? (
           <section className="mt-4 grid gap-4">
-            <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
-              <h2 className="text-2xl font-black text-stone-950">Videos & Resources</h2>
-              <p className="mt-2 font-bold text-stone-600">
-                Watch one clip, then practice one cue. Keep the lesson simple and fun.
-              </p>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {VIDEO_RESOURCES.map((resource) => (
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)]">
+              <article className="overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-sm">
+                <div className="aspect-video bg-slate-950">
+                  <iframe
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="h-full w-full"
+                    src={ANAMARIE_BRUNI_TEE_REFERENCE.embedUrl}
+                    title={ANAMARIE_BRUNI_TEE_REFERENCE.title}
+                  />
+                </div>
+                <div className="p-5">
+                  <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-sky-700">
+                    <Video className="h-5 w-5" />
+                    {ANAMARIE_BRUNI_TEE_REFERENCE.label}
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-stone-950">
+                    {ANAMARIE_BRUNI_TEE_REFERENCE.title}
+                  </h2>
+                  <p className="mt-2 font-bold leading-7 text-stone-600">
+                    {ANAMARIE_BRUNI_TEE_REFERENCE.summary}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <a
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 font-black text-sky-900 transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                      href={ANAMARIE_BRUNI_TEE_REFERENCE.url}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Open on YouTube <ExternalLink className="h-4 w-4" />
+                    </a>
+                    <button
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 font-black text-white transition hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                      onClick={openAnaMariePractice}
+                      type="button"
+                    >
+                      <NotebookPen className="h-4 w-4" />
+                      Build this practice log
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              <aside className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 shadow-sm">
+                <p className="text-sm font-black uppercase tracking-[0.14em] text-cyan-700">
+                  Best use
+                </p>
+                <h3 className="mt-2 text-2xl font-black text-cyan-950">
+                  Make it a 20-minute tee station.
+                </h3>
+                <p className="mt-3 font-bold leading-7 text-cyan-900">
+                  {ANAMARIE_BRUNI_TEE_REFERENCE.practicePlan}
+                </p>
+                <ol className="mt-4 grid gap-3">
+                  {ANAMARIE_BRUNI_TEE_REFERENCE.drills.map((drill, index) => (
+                    <li
+                      className="flex gap-3 rounded-xl border border-cyan-200 bg-white/80 p-3"
+                      key={drill.name}
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-600 text-sm font-black text-white">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="font-black text-stone-950">{drill.name}</p>
+                        <p className="mt-1 text-sm font-bold text-cyan-900">
+                          {drill.timestamp} · {drill.reps}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </aside>
+            </section>
+
+            <section>
+              <h3 className="mb-3 text-xl font-black text-stone-950">
+                Timestamped drill notes
+              </h3>
+              <div className="grid gap-3 lg:grid-cols-3">
+                {ANAMARIE_BRUNI_TEE_REFERENCE.drills.map((drill) => (
+                  <article
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    key={drill.name}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-600">
+                          {drill.timestamp}
+                        </p>
+                        <h4 className="mt-1 text-xl font-black text-stone-950">
+                          {drill.name}
+                        </h4>
+                      </div>
+                      <PlayCircle className="h-7 w-7 shrink-0 text-sky-600" />
+                    </div>
+                    <p className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-sm font-black text-sky-950">
+                      Focus: {drill.focus}
+                    </p>
+                    <p className="mt-3 font-bold leading-7 text-stone-600">
+                      Use when: {drill.useWhen}
+                    </p>
+                    <ul className="mt-4 grid gap-2">
+                      {drill.cues.map((cue) => (
+                        <li className="flex gap-2 text-sm font-bold text-stone-700" key={cue}>
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                          <span>{cue}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-5 grid gap-2">
+                      <a
+                        className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sm font-black text-sky-900 transition hover:bg-sky-100 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                        href={drill.url}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Watch timestamp <ExternalLink className="h-4 w-4" />
+                      </a>
+                      <button
+                        className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-sky-100"
+                        onClick={() => openAnaMarieDrillPractice(drill)}
+                        type="button"
+                      >
+                        <NotebookPen className="h-4 w-4" />
+                        Log this drill
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
+                <h3 className="text-xl font-black text-stone-950">
+                  More videos & resources
+                </h3>
+                <p className="mt-2 font-bold text-stone-600">
+                  Watch one clip, then practice one cue. Keep the lesson simple and fun.
+                </p>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {SUPPLEMENTAL_VIDEO_RESOURCES.map((resource) => (
                 <a
                   className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-sky-100"
                   href={resource.url}
@@ -781,7 +1052,8 @@ export function HittingTrainingModule({
                   </div>
                 </a>
               ))}
-            </div>
+              </div>
+            </section>
           </section>
         ) : null}
 
