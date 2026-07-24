@@ -28,6 +28,7 @@ import { parsePositiveIntegerInput } from "@/lib/input";
 import {
   deletePlayerRemote,
   deleteSessionRemote,
+  isParentPinSetRemote,
   loadAppData,
   persistLocalState,
   recomputeBadgesForPlayer,
@@ -36,7 +37,9 @@ import {
   savePlayerRemote,
   saveSessionRemote,
   saveSettingsRemote,
+  setParentPinRemote,
   saveTemplateRemote,
+  verifyParentPinRemote,
 } from "@/lib/data-client";
 import { createId, formatShortDate, getAppDateKey, nowIso } from "@/lib/time";
 import { getMaxStreak, getSummerRewardProgress, getWeeklyProgress } from "@/lib/progress";
@@ -433,18 +436,29 @@ function PendingCard({
 }
 
 function ApprovalCodeDialog({
-  onCancel,
+  mode,
   onConfirm,
 }: {
-  onCancel?: () => void;
-  onConfirm: (code: string) => Promise<void>;
+  mode: "setup" | "unlock";
+  onConfirm: (pin: string) => Promise<void>;
 }) {
   const [code, setCode] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
   const confirm = async () => {
     if (!code.trim() || checking) {
+      return;
+    }
+
+    if (mode === "setup" && code !== confirmation) {
+      setError("Those PINs do not match.");
+      return;
+    }
+
+    if (!/^\d{4,8}$/.test(code)) {
+      setError("Use 4 to 8 numbers for the parent PIN.");
       return;
     }
 
@@ -469,10 +483,12 @@ function ApprovalCodeDialog({
       >
         <ShieldCheck className="h-10 w-10 text-violet-600" />
         <h2 className="mt-3 text-2xl font-black text-stone-950" id="approval-code-title">
-          Parent dashboard
+          {mode === "setup" ? "Create parent PIN" : "Parent dashboard"}
         </h2>
         <p className="mt-2 font-bold text-stone-600">
-          Enter the parent PIN to open the dashboard.
+          {mode === "setup"
+            ? "Choose a PIN that only the parents know."
+            : "Enter the parent PIN to open the dashboard."}
         </p>
         <form
           className="mt-5"
@@ -482,7 +498,7 @@ function ApprovalCodeDialog({
           }}
         >
           <label className="grid gap-2 text-sm font-black text-stone-600">
-            Parent code
+            Parent PIN
             <input
               autoFocus
               className="min-h-12 rounded-md border border-stone-200 px-3 text-center text-xl font-black tracking-[0.3em] text-stone-950"
@@ -492,24 +508,30 @@ function ApprovalCodeDialog({
               value={code}
             />
           </label>
+          {mode === "setup" ? (
+            <label className="mt-3 grid gap-2 text-sm font-black text-stone-600">
+              Confirm PIN
+              <input
+                className="min-h-12 rounded-md border border-stone-200 px-3 text-center text-xl font-black tracking-[0.3em] text-stone-950"
+                inputMode="numeric"
+                onChange={(event) => setConfirmation(event.target.value)}
+                type="password"
+                value={confirmation}
+              />
+            </label>
+          ) : null}
           {error ? <p className="mt-3 font-bold text-rose-700">{error}</p> : null}
-          <div className={classNames("mt-5 grid gap-2", onCancel && "grid-cols-2")}>
-            {onCancel ? (
-              <button
-                className="min-h-11 rounded-md border border-stone-200 px-4 font-black text-stone-700"
-                disabled={checking}
-                onClick={onCancel}
-                type="button"
-              >
-                Cancel
-              </button>
-            ) : null}
+          <div className="mt-5 grid gap-2">
             <button
               className="min-h-11 rounded-md bg-violet-600 px-4 font-black text-white disabled:opacity-50"
-              disabled={!code.trim() || checking}
+              disabled={!code.trim() || (mode === "setup" && !confirmation) || checking}
               type="submit"
             >
-              {checking ? "Checking…" : "Open dashboard"}
+              {checking
+                ? "Checking…"
+                : mode === "setup"
+                  ? "Create PIN"
+                  : "Open dashboard"}
             </button>
           </div>
         </form>
@@ -719,7 +741,9 @@ function TemplateCard({
 }
 
 export function ParentApp() {
-  const [dashboardUnlocked, setDashboardUnlocked] = useState(false);
+  const [pinState, setPinState] = useState<
+    "checking" | "setup" | "unlock" | "unlocked" | "failed"
+  >("checking");
   const [result, setResult] = useState<AppDataResult | null>(null);
   const [editingSession, setEditingSession] = useState<PracticeSession | null>(null);
   const [newPlayerName, setNewPlayerName] = useState("");
@@ -728,7 +752,16 @@ export function ParentApp() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!dashboardUnlocked) {
+    isParentPinSetRemote()
+      .then((isSet) => setPinState(isSet ? "unlock" : "setup"))
+      .catch((caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : "Could not check the parent PIN.");
+        setPinState("failed");
+      });
+  }, []);
+
+  useEffect(() => {
+    if (pinState !== "unlocked") {
       return;
     }
 
@@ -749,7 +782,7 @@ export function ParentApp() {
     return () => {
       mounted = false;
     };
-  }, [dashboardUnlocked]);
+  }, [pinState]);
 
   const data = result?.data;
   const mode = result?.mode ?? "local";
@@ -811,19 +844,20 @@ export function ParentApp() {
     });
   };
 
-  const unlockDashboard = async (code: string) => {
-    const response = await fetch("/api/parent-approval", {
-      body: JSON.stringify({ code }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-    const result = (await response.json().catch(() => null)) as { error?: string } | null;
-
-    if (!response.ok) {
-      throw new Error(result?.error ?? "Could not verify the parent code.");
+  const submitParentPin = async (pin: string) => {
+    if (pinState === "setup") {
+      await setParentPinRemote(pin);
+      setPinState("unlocked");
+      return;
     }
 
-    setDashboardUnlocked(true);
+    const isValid = await verifyParentPinRemote(pin);
+
+    if (!isValid) {
+      throw new Error("That parent PIN is incorrect.");
+    }
+
+    setPinState("unlocked");
   };
 
   const rejectSession = (session: PracticeSession, reason: string) => {
@@ -1047,8 +1081,16 @@ export function ParentApp() {
     }
   };
 
-  if (!dashboardUnlocked) {
-    return <ApprovalCodeDialog onConfirm={unlockDashboard} />;
+  if (pinState === "checking") {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-stone-100 p-4">
+        <ShieldCheck className="h-12 w-12 animate-pulse text-violet-600" />
+      </main>
+    );
+  }
+
+  if (pinState === "setup" || pinState === "unlock") {
+    return <ApprovalCodeDialog mode={pinState} onConfirm={submitParentPin} />;
   }
 
   if (error) {

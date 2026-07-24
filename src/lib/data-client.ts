@@ -89,6 +89,56 @@ export async function canManageInvitationsRemote() {
   return isAppAdminEmail(user?.email);
 }
 
+export async function isParentPinSetRemote() {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return false;
+  }
+
+  const result = await supabase.rpc("softball_parent_pin_is_set");
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data === true;
+}
+
+export async function setParentPinRemote(pin: string) {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    throw new Error("Supabase is required to create a parent PIN.");
+  }
+
+  const result = await supabase.rpc("set_softball_parent_pin", { pin });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.data !== true) {
+    throw new Error("A parent PIN has already been created.");
+  }
+}
+
+export async function verifyParentPinRemote(pin: string) {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    throw new Error("Supabase is required to verify the parent PIN.");
+  }
+
+  const result = await supabase.rpc("verify_softball_parent_pin", { pin });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.data === true;
+}
+
 export async function createInvitationRemote(email: string) {
   const supabase = getSupabaseBrowserClient();
 
