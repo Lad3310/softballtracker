@@ -90,6 +90,9 @@ For a Vercel deployment, add both public Supabase variables to the Vercel projec
 - `WEEK_START_DAY` is exported from `src/lib/config.ts` and set to Monday.
 - The database stores UTC `timestamptz`; the app stores `session_date` as the New York calendar date.
 - With approval on, child sessions are `pending` and do not count until approved.
+- Opening the parent dashboard requires the server-side `PARENT_APPROVAL_CODE`
+  (default: `2468`). Change it before deploying and do not expose it as a
+  `NEXT_PUBLIC_` variable.
 - With approval off, child sessions are submitted as `approved` with `approved_by = 'auto'`.
 - Offline tolerance is implemented for child practice submits: the session is saved locally immediately, then synced to Supabase when online. Broader parent edits are online-first.
 - The active app is softball-only. Parents can create or edit softball practice plans and drills.

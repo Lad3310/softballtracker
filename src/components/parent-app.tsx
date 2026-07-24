@@ -432,6 +432,92 @@ function PendingCard({
   );
 }
 
+function ApprovalCodeDialog({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel?: () => void;
+  onConfirm: (code: string) => Promise<void>;
+}) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const confirm = async () => {
+    if (!code.trim() || checking) {
+      return;
+    }
+
+    setChecking(true);
+    setError(null);
+
+    try {
+      await onConfirm(code);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not verify the parent code.");
+      setChecking(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-stone-950/50 p-4">
+      <section
+        aria-labelledby="approval-code-title"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        role="dialog"
+      >
+        <ShieldCheck className="h-10 w-10 text-violet-600" />
+        <h2 className="mt-3 text-2xl font-black text-stone-950" id="approval-code-title">
+          Parent dashboard
+        </h2>
+        <p className="mt-2 font-bold text-stone-600">
+          Enter the parent PIN to open the dashboard.
+        </p>
+        <form
+          className="mt-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void confirm();
+          }}
+        >
+          <label className="grid gap-2 text-sm font-black text-stone-600">
+            Parent code
+            <input
+              autoFocus
+              className="min-h-12 rounded-md border border-stone-200 px-3 text-center text-xl font-black tracking-[0.3em] text-stone-950"
+              inputMode="numeric"
+              onChange={(event) => setCode(event.target.value)}
+              type="password"
+              value={code}
+            />
+          </label>
+          {error ? <p className="mt-3 font-bold text-rose-700">{error}</p> : null}
+          <div className={classNames("mt-5 grid gap-2", onCancel && "grid-cols-2")}>
+            {onCancel ? (
+              <button
+                className="min-h-11 rounded-md border border-stone-200 px-4 font-black text-stone-700"
+                disabled={checking}
+                onClick={onCancel}
+                type="button"
+              >
+                Cancel
+              </button>
+            ) : null}
+            <button
+              className="min-h-11 rounded-md bg-violet-600 px-4 font-black text-white disabled:opacity-50"
+              disabled={!code.trim() || checking}
+              type="submit"
+            >
+              {checking ? "Checking…" : "Open dashboard"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 function PlayerSettingsCard({
   player,
   onDelete,
@@ -633,6 +719,7 @@ function TemplateCard({
 }
 
 export function ParentApp() {
+  const [dashboardUnlocked, setDashboardUnlocked] = useState(false);
   const [result, setResult] = useState<AppDataResult | null>(null);
   const [editingSession, setEditingSession] = useState<PracticeSession | null>(null);
   const [newPlayerName, setNewPlayerName] = useState("");
@@ -641,6 +728,10 @@ export function ParentApp() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!dashboardUnlocked) {
+      return;
+    }
+
     let mounted = true;
 
     loadAppData()
@@ -658,7 +749,7 @@ export function ParentApp() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [dashboardUnlocked]);
 
   const data = result?.data;
   const mode = result?.mode ?? "local";
@@ -718,6 +809,21 @@ export function ParentApp() {
       approved_at: nowIso(),
       rejected_reason: null,
     });
+  };
+
+  const unlockDashboard = async (code: string) => {
+    const response = await fetch("/api/parent-approval", {
+      body: JSON.stringify({ code }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    const result = (await response.json().catch(() => null)) as { error?: string } | null;
+
+    if (!response.ok) {
+      throw new Error(result?.error ?? "Could not verify the parent code.");
+    }
+
+    setDashboardUnlocked(true);
   };
 
   const rejectSession = (session: PracticeSession, reason: string) => {
@@ -940,6 +1046,10 @@ export function ParentApp() {
       setNotice(caught instanceof Error ? caught.message : "Practice plan saved on this device.");
     }
   };
+
+  if (!dashboardUnlocked) {
+    return <ApprovalCodeDialog onConfirm={unlockDashboard} />;
+  }
 
   if (error) {
     return (
